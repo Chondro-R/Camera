@@ -5,6 +5,7 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKe
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
 from telegram.error import TelegramError
 
+# Logging setup
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -33,7 +34,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            f"❌ You must join our official channel before using this bot!\n\nPlease click below to join:",
+            "❌ You must join our official channel before using this bot!\n\nPlease click below to join:",
             reply_markup=reply_markup
         )
         return
@@ -54,8 +55,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check if message object and user exist
+    if not update.message or not update.message.from_user:
+        return
+
     user_id = update.message.from_user.id
-    user_text = update.message.text.strip()
+    user_text = update.message.text.strip() if update.message.text else ""
     
     is_joined = await check_channel_membership(context.bot, user_id)
     if not is_joined:
@@ -65,7 +70,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            f"❌ Please join our channel first:",
+            "❌ Please join our channel first:",
             reply_markup=reply_markup
         )
         return
@@ -77,9 +82,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         input_field_placeholder="Click Create Link button..."
     )
 
+    # When user clicks the "🔗 Create Link" button
     if user_text == "🔗 Create Link":
         context.user_data['waiting_for_url'] = True
-        # Professional ebong clear format
         await update.message.reply_text(
             "🌐 **Please enter a valid target URL:**\n\n"
             "Example: `https://example.com` or `google.com`",
@@ -88,24 +93,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # When user sends the URL after clicking the button
     if context.user_data.get('waiting_for_url', False):
         target_url = user_text
         if not (target_url.startswith("http://") or target_url.startswith("https://")):
             target_url = "https://" + target_url
 
-        encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode()
-        unique_id = str(uuid.uuid4())[:6]
-        
-        tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&url={encoded_url}"
-        
-        response_msg = (
-            f"🎯 **Target Tracking Link Created Successfully!**\n\n"
-            f"🔗 Original Target: `{target_url}`\n\n"
-            f"📤 Send this link to your target:\n{tracking_link}"
-        )
-        
-        context.user_data['waiting_for_url'] = False
-        await update.message.reply_text(response_msg, parse_mode="Markdown", reply_markup=reply_markup)
+        try:
+            encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode()
+            unique_id = str(uuid.uuid4())[:6]
+            
+            tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&url={encoded_url}"
+            
+            response_msg = (
+                f"🎯 **Target Tracking Link Created Successfully!**\n\n"
+                f"🔗 Original Target: `{target_url}`\n\n"
+                f"📤 Send this link to your target:\n{tracking_link}"
+            )
+            
+            context.user_data['waiting_for_url'] = False
+            await update.message.reply_text(response_msg, parse_mode="Markdown", reply_markup=reply_markup)
+        except Exception as e:
+            logging.error(f"Error generating link: {e}")
+            await update.message.reply_text("⚠️ An error occurred while generating the link. Please try again.", reply_markup=reply_markup)
     else:
         await update.message.reply_text(
             "⚠️ Please click the **🔗 Create Link** button first.",
@@ -121,5 +131,5 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Bot is running professionally...")
-    application.run_polling()v
+    print("Bot is running perfectly...")
+    application.run_polling()z
