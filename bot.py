@@ -1,8 +1,7 @@
 import logging
 import uuid
 import base64
-import urllib.parse
-import urllib.request
+import requests  # requests লাইব্রেরি ব্যবহার করা হয়েছে
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CallbackQueryHandler, CommandHandler, filters
@@ -18,14 +17,15 @@ CORRECT_PROMO_CODE = "boom"
 user_promo_expiry = {}
 
 def shorten_url(long_url):
-    """TinyURL API দিয়ে দীর্ঘ লিংকটি ছোট করার ফাংশন"""
+    """zip1.io API দিয়ে দীর্ঘ লিংকটি ছোট করার নতুন ফাংশন"""
     try:
-        api_url = f"http://tinyurl.com/api-create.php?url={urllib.parse.quote(long_url)}"
-        with urllib.request.urlopen(api_url, timeout=5) as response:
-            return response.read().decode('utf-8')
+        response = requests.post('https://zip1.io/api/create', json={'url': long_url}, timeout=5)
+        data = response.json()
+        if 'short_url' in data:
+            return data['short_url']
     except Exception as e:
-        logging.error(f"Error shortening URL: {e}")
-        return long_url
+        logging.error(f"Error shortening URL with zip1.io: {e}")
+    return long_url  # কোনো কারণে ফেইল করলে মূল লিংক রিটার্ন করবে
 
 async def check_channel_membership(bot, user_id):
     try:
@@ -124,12 +124,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Long tracking link
         raw_tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&cid={encoded_cid}&url={encoded_url}&e={hex_exp}"
         
-        # Short tracking link
+        # zip1.io দিয়ে শর্ট লিংক তৈরি করা হচ্ছে
         short_tracking_link = shorten_url(raw_tracking_link)
         
         context.user_data['waiting_for_url'] = False
         
-        # লং এবং শর্ট—দুটো লিংকই একসাথে রেসপন্স দেওয়া হচ্ছে
         response_msg = (
             f"🎯 **Target Tracking Link Created Successfully!**\n\n"
             f"🔗 **Original Target:** `{target_url}`\n\n"
@@ -148,5 +147,5 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    print("Dual Link Bot is running...")
+    print("Zip1.io Shortener Bot is running...")
     app.run_polling()
