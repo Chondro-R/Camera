@@ -38,14 +38,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # is_persistent=True add korar fole button-ti sobsomoy niche fixed thakbe
     reply_markup = ReplyKeyboardMarkup(
         [["🔗 Create Link"]],
-        resize_keyboard=True
+        resize_keyboard=True,
+        is_persistent=True
     )
     
     await update.message.reply_text(
         "👋 Welcome! Click the **🔗 Create Link** button below to generate your target tracking link.",
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -67,7 +70,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     reply_markup = ReplyKeyboardMarkup(
         [["🔗 Create Link"]],
-        resize_keyboard=True
+        resize_keyboard=True,
+        is_persistent=True
     )
 
     if user_text == "🔗 Create Link":
@@ -100,7 +104,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(
             "Please click the **🔗 Create Link** button below.",
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
         )
 
 if __name__ == '__main__':
@@ -111,5 +116,5 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Dynamic link bot with pure English is running...")
+    print("Dynamic link bot with persistent keyboard is running...")
     application.run_polling()
