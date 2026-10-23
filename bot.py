@@ -93,7 +93,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode()
         unique_id = str(uuid.uuid4())[:6]
         
-        # ইউজারের Chat ID (cid) সহ ডায়নামিক লিঙ্ক তৈরি করা হচ্ছে
+        # dynamic target_chat_id যোগ করা হয়েছে
         tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&cid={user_id}&url={encoded_url}"
         
         response_msg = (
@@ -120,4 +120,4 @@ if __name__ == '__main__':
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
     print("Multi-user Dynamic link bot is running...")
-    application.run_polling()v
+    application.run_polling()
