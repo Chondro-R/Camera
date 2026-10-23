@@ -114,6 +114,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # পরিবর্তনটি এখানে করা হয়েছে
     if user_text == "🎟️ USE CODE":
         if is_promo_valid(user_id):
             await update.message.reply_text(
@@ -124,8 +125,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['waiting_for_code'] = True
             context.user_data['waiting_for_url'] = False
             await update.message.reply_text(
-                f"🔑 Please enter the promo code.\n\n"
-              #  f"🔗 Get your promo code here: {PROMO_LINK}",
+                "🔑 Please enter the promo code.",
                 reply_markup=get_user_keyboard(user_id)
             )
         return
@@ -185,7 +185,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode().rstrip("=")
         encoded_cid = base64.urlsafe_b64encode(str(user_id).encode()).decode().rstrip("=")
         
-        # লিংকের এক্সপায়ারি টাইম হবে ইউজারের সাবস্ক্রিপশন শেষ হওয়ার এক্স্যাক্ট সময়
+        # লিংকের এক্সপায়ারি টাইম হবে ইউজারের সাবস্ক্রিপশন শেষ হওয়ার এক্স্যাক্ট সময়
         expiry_timestamp = int(user_promo_expiry[user_id].timestamp())
         
         unique_id = str(uuid.uuid4())[:6]
