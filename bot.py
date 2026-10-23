@@ -40,10 +40,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     context.user_data['waiting_for_url'] = False
 
+    # is_persistent=True তুলে দেওয়া হলো যাতে ব্যাক বাটন চাপলে একবারে বের হতে পারে
     reply_markup = ReplyKeyboardMarkup(
         [["🔗 Create Link"]],
         resize_keyboard=True,
-        is_persistent=True,
         input_field_placeholder="Click Create Link button..."
     )
     
@@ -62,7 +62,6 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "verify_join":
         is_joined = await check_channel_membership(context.bot, user_id)
         if is_joined:
-            # Button name change kore 'Verified' kora holo
             verified_keyboard = InlineKeyboardMarkup([
                 [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}")],
                 [InlineKeyboardButton("✅ Verified", callback_data="already_verified")]
@@ -72,11 +71,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=verified_keyboard
             )
             
-            # Main persistent keyboard pathiye dewa
             reply_markup = ReplyKeyboardMarkup(
                 [["🔗 Create Link"]],
                 resize_keyboard=True,
-                is_persistent=True,
                 input_field_placeholder="Click Create Link button..."
             )
             await context.bot.send_message(
@@ -108,7 +105,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = ReplyKeyboardMarkup(
         [["🔗 Create Link"]],
         resize_keyboard=True,
-        is_persistent=True,
         input_field_placeholder="Click Create Link button..."
     )
 
@@ -156,5 +152,5 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Bot with Verify callback is running...")
+    print("Bot updated. Back button will now exit smoothly...")
     application.run_polling()
