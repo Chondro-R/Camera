@@ -16,7 +16,6 @@ CHANNEL_USERNAME = "@TeamLolOfficial"
 PROMO_LINK = "https://shrinkme.click/JtuERnP3"
 CORRECT_PROMO_CODE = "boom"
 
-# User-er promo code expire time track korar memory
 user_promo_expiry = {}
 
 async def check_channel_membership(bot, user_id):
@@ -34,13 +33,10 @@ def is_promo_valid(user_id):
             return True
     return False
 
-# User-er promo code status dekhe dynamic keyboard generate kora
 def get_user_keyboard(user_id):
     if is_promo_valid(user_id):
-        # Promo code valid thakle USE CODE button ta ar dekha jabe na
         keyboard = [["🔗 Create Link"]]
     else:
-        # Promo code na thakle duita button-i thakbe
         keyboard = [["🔗 Create Link"], ["🎟️ USE CODE"]]
         
     return ReplyKeyboardMarkup(
@@ -118,7 +114,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # USE CODE button-e click korle
     if user_text == "🎟️ USE CODE":
         if is_promo_valid(user_id):
             await update.message.reply_text(
@@ -135,16 +130,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         return
 
-    # Promo code submit korar somoy
     if context.user_data.get('waiting_for_code', False):
         if user_text.lower() == CORRECT_PROMO_CODE:
-            # 24 Hours 1 Minute validity set kora
             expiry_time = datetime.now() + timedelta(hours=24, minutes=1)
             user_promo_expiry[user_id] = expiry_time
             
             context.user_data['waiting_for_code'] = False
             
-            # Code thik thakle 'USE CODE' button ta ar thakbe na
             await update.message.reply_text(
                 "🎉 Promo code activated successfully for 24 Hours & 1 Minute!\n\n"
                 "Now you can click **🔗 Create Link** to generate your tracking link.",
@@ -160,9 +152,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         return
 
-    # Create Link button-e click korle
     if user_text == "🔗 Create Link":
-        # Check promo code validity
         if not is_promo_valid(user_id):
             context.user_data['waiting_for_url'] = False
             await update.message.reply_text(
@@ -181,7 +171,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # URL processing
     if context.user_data.get('waiting_for_url', False):
         if not is_promo_valid(user_id):
             context.user_data['waiting_for_url'] = False
@@ -225,5 +214,5 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Dynamic Keyboard Promo Bot is running...")
+    print("Secure Subscription Bot is running...")
     application.run_polling()
