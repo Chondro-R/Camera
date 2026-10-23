@@ -125,7 +125,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.user_data['waiting_for_url'] = False
             await update.message.reply_text(
                 f"🔑 Please enter the promo code.\n\n"
-                f"🔗 Get your promo code here: {PROMO_LINK}",
+              #  f"🔗 Get your promo code here: {PROMO_LINK}",
                 reply_markup=get_user_keyboard(user_id)
             )
         return
