@@ -1,7 +1,6 @@
 import logging
 import uuid
 import base64
-import time
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CallbackQueryHandler, CommandHandler, filters
@@ -165,7 +164,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_url'] = True
         context.user_data['waiting_for_code'] = False
         await update.message.reply_text(
-            "Enter a valid url",
+            "Enter a valid URL:",
             reply_markup=get_user_keyboard(user_id)
         )
         return
@@ -186,11 +185,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode().rstrip("=")
         encoded_cid = base64.urlsafe_b64encode(str(user_id).encode()).decode().rstrip("=")
         
-        # ২৪ ঘণ্টা ১ মিনিট মেয়াদ নির্ধারণ (Timestamp)
-        expiry_timestamp = int(time.time()) + (24 * 3600 + 60)
+        # লিংকের এক্সপায়ারি টাইম হবে ইউজারের সাবস্ক্রিপশন শেষ হওয়ার এক্স্যাক্ট সময়
+        expiry_timestamp = int(user_promo_expiry[user_id].timestamp())
+        
         unique_id = str(uuid.uuid4())[:6]
         
-        # exp er bodle e parameter babohar kora holo
         tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&cid={encoded_cid}&e={expiry_timestamp}&url={encoded_url}"
         
         response_msg = (
