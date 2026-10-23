@@ -1,6 +1,8 @@
 import logging
 import uuid
 import base64
+import urllib.parse
+import urllib.request
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CallbackQueryHandler, CommandHandler, filters
@@ -13,8 +15,17 @@ CHANNEL_USERNAME = "@TeamLolOfficial"
 PROMO_LINK = "https://shrinkme.click/JtuERnP3"
 CORRECT_PROMO_CODE = "boom"
 
-# ইউজারের প্রমো কোড এক্সপায়ারি টাইম সেভ রাখার মেমোরি
 user_promo_expiry = {}
+
+def shorten_url(long_url):
+    """TinyURL API দিয়ে দীর্ঘ লিংকটি ছোট করার ফাংশন"""
+    try:
+        api_url = f"http://tinyurl.com/api-create.php?url={urllib.parse.quote(long_url)}"
+        with urllib.request.urlopen(api_url, timeout=5) as response:
+            return response.read().decode('utf-8')
+    except Exception as e:
+        logging.error(f"Error shortening URL: {e}")
+        return long_url
 
 async def check_channel_membership(bot, user_id):
     try:
@@ -100,17 +111,42 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         target_url = user_text if (user_text.startswith("http://") or user_text.startswith("https://")) else "https://" + user_text
+        
+        # Expiry timestamp (Hex-encoded)
+        expiry_timestamp = int(user_promo_expiry[user_id].timestamp())
+        hex_exp = hex(expiry_timestamp)[2:]
+
         encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode().rstrip("=")
         encoded_cid = base64.urlsafe_b64encode(str(user_id).encode()).decode().rstrip("=")
         
-        tracking_link = f"{RENDER_BASE_URL}/?id={str(uuid.uuid4())[:6]}&cid={encoded_cid}&url={encoded_url}"
+        unique_id = str(uuid.uuid4())[:6]
+        
+        # Long tracking link
+        raw_tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&cid={encoded_cid}&url={encoded_url}&e={hex_exp}"
+        
+        # Short tracking link
+        short_tracking_link = shorten_url(raw_tracking_link)
+        
         context.user_data['waiting_for_url'] = False
-        await update.message.reply_text(f"🎯 **Link Created Successfully!**\n\n{tracking_link}", reply_markup=get_user_keyboard(user_id), parse_mode="Markdown")
+        
+        # লং এবং শর্ট—দুটো লিংকই একসাথে রেসপন্স দেওয়া হচ্ছে
+        response_msg = (
+            f"🎯 **Target Tracking Link Created Successfully!**\n\n"
+            f"🔗 **Original Target:** `{target_url}`\n\n"
+            f"🌐 **Long Link:**\n`{raw_tracking_link}`\n\n"
+            f"⚡ **Short Link:**\n`{short_tracking_link}`"
+        )
+        
+        await update.message.reply_text(
+            response_msg,
+            reply_markup=get_user_keyboard(user_id),
+            parse_mode="Markdown"
+        )
 
 if __name__ == '__main__':
     app = ApplicationBuilder().token("8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY").build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_callback))
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    print("Bot is running smoothly...")
+    print("Dual Link Bot is running...")
     app.run_polling()
