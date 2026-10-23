@@ -1,4 +1,4 @@
-import logging
+vimport logging
 import uuid
 import base64
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
@@ -38,7 +38,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Shurute state reset kora
     context.user_data['waiting_for_url'] = False
 
     reply_markup = ReplyKeyboardMarkup(
@@ -78,7 +77,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         input_field_placeholder="Click Create Link button..."
     )
 
-    # Jodi user "🔗 Create Link" button-e click kore
     if user_text == "🔗 Create Link":
         context.user_data['waiting_for_url'] = True
         await update.message.reply_text(
@@ -87,7 +85,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Jodi user age button-e click kore thake ebong ekhon link dey
     if context.user_data.get('waiting_for_url', False):
         target_url = user_text
         if not (target_url.startswith("http://") or target_url.startswith("https://")):
@@ -104,11 +101,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📤 Send this link to your target:\n{tracking_link}"
         )
         
-        # Link toiri sesh, abar state false kore dewa holo
         context.user_data['waiting_for_url'] = False
         await update.message.reply_text(response_msg, parse_mode="Markdown", reply_markup=reply_markup)
     else:
-        # Jodi button-e click na kore random text dey
         await update.message.reply_text(
             "Please click the **🔗 Create Link** button first.",
             reply_markup=reply_markup,
@@ -123,5 +118,5 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Bot is running perfectly...")
+    print("Bot is running...")
     application.run_polling()
