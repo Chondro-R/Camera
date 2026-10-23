@@ -55,12 +55,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #000;
+            background-color: #ffffff; /* ব্যাকগ্রাউন্ড সাদা করা হয়েছে */
         }
         #game-frame {
             width: 100%;
             height: 100%;
             border: none;
+            background-color: #ffffff; /* iframe এর ব্যাকগ্রাউন্ডও সাদা রাখা হয়েছে */
         }
         /* Send Picture বাটনের স্টাইল */
         #send-pic-btn {
