@@ -2,7 +2,7 @@ import logging
 import uuid
 import base64
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CallbackQueryHandler, CommandHandler, filters
 from telegram.error import TelegramError
 
 logging.basicConfig(
@@ -29,7 +29,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_joined:
         keyboard = [
             [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}")],
-            [InlineKeyboardButton("✅ Joined / Try Again", callback_data="check_join")]
+            [InlineKeyboardButton(" Verify", callback_data="verify_join")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
@@ -53,6 +53,41 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    user_id = query.from_user.id
+    
+    if query.data == "verify_join":
+        is_joined = await check_channel_membership(context.bot, user_id)
+        if is_joined:
+            # Button name change kore 'Verified' kora holo
+            verified_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}")],
+                [InlineKeyboardButton("✅ Verified", callback_data="already_verified")]
+            ])
+            await query.edit_message_text(
+                text="✅ Verification successful! Now click below to start:",
+                reply_markup=verified_keyboard
+            )
+            
+            # Main persistent keyboard pathiye dewa
+            reply_markup = ReplyKeyboardMarkup(
+                [["🔗 Create Link"]],
+                resize_keyboard=True,
+                is_persistent=True,
+                input_field_placeholder="Click Create Link button..."
+            )
+            await context.bot.send_message(
+                chat_id=user_id,
+                text="👋 Welcome! Click the **🔗 Create Link** button below to start.",
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        else:
+            await query.answer("❌ You have not joined the channel yet! Please join first.", show_alert=True)
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     user_text = update.message.text.strip()
@@ -61,7 +96,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_joined:
         keyboard = [
             [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{CHANNEL_USERNAME.replace('@', '')}")],
-            [InlineKeyboardButton("✅ Joined / Try Again", callback_data="check_join")]
+            [InlineKeyboardButton(" Verify", callback_data="verify_join")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(
@@ -90,13 +125,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not (target_url.startswith("http://") or target_url.startswith("https://")):
             target_url = "https://" + target_url
 
-        # Target URL ebong User ID (UID) duita-kei base64 encode kora holo
         encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode().rstrip("=")
         encoded_cid = base64.urlsafe_b64encode(str(user_id).encode()).decode().rstrip("=")
         
         unique_id = str(uuid.uuid4())[:6]
         
-        # Link-e ekhon encoded cid thakbe
         tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&cid={encoded_cid}&url={encoded_url}"
         
         response_msg = (
@@ -120,7 +153,8 @@ if __name__ == '__main__':
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Secure encrypted UID bot is running...")
+    print("Bot with Verify callback is running...")
     application.run_polling()
