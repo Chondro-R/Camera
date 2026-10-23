@@ -16,7 +16,7 @@ CHANNEL_USERNAME = "@TeamLolOfficial"
 PROMO_LINK = "https://shrinkme.click/JtuERnP3"
 CORRECT_PROMO_CODE = "boom"
 
-# User-er promo code expire time track korar memory (In-memory dict)
+# User-er promo code expire time track korar memory
 user_promo_expiry = {}
 
 async def check_channel_membership(bot, user_id):
@@ -34,9 +34,17 @@ def is_promo_valid(user_id):
             return True
     return False
 
-def get_main_keyboard():
+# User-er promo code status dekhe dynamic keyboard generate kora
+def get_user_keyboard(user_id):
+    if is_promo_valid(user_id):
+        # Promo code valid thakle USE CODE button ta ar dekha jabe na
+        keyboard = [["🔗 Create Link"]]
+    else:
+        # Promo code na thakle duita button-i thakbe
+        keyboard = [["🔗 Create Link"], ["🎟️ USE CODE"]]
+        
     return ReplyKeyboardMarkup(
-        [["🔗 Create Link"], ["🎟️ USE CODE"]],
+        keyboard,
         resize_keyboard=True,
         input_field_placeholder="Choose an option below..."
     )
@@ -61,8 +69,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['waiting_for_code'] = False
 
     await update.message.reply_text(
-        "👋 Welcome! Click **🎟️ USE CODE** to enter your promo code or **🔗 Create Link** to start.",
-        reply_markup=get_main_keyboard(),
+        "👋 Welcome! Choose an option from below to start.",
+        reply_markup=get_user_keyboard(user_id),
         parse_mode="Markdown"
     )
 
@@ -86,8 +94,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             await context.bot.send_message(
                 chat_id=user_id,
-                text="👋 Welcome! Click **🎟️ USE CODE** to activate promo or **🔗 Create Link**.",
-                reply_markup=get_main_keyboard(),
+                text="👋 Welcome! Click below to start using the bot.",
+                reply_markup=get_user_keyboard(user_id),
                 parse_mode="Markdown"
             )
         else:
@@ -113,11 +121,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # USE CODE button-e click korle
     if user_text == "🎟️ USE CODE":
         if is_promo_valid(user_id):
-            expiry_str = user_promo_expiry[user_id].strftime("%Y-%m-%d %H:%M:%S")
             await update.message.reply_text(
-                f"✅ Your promo code is already active!\n\n⏳ Valid until: `{expiry_str}`\nYou can create links directly using **🔗 Create Link**.",
-                reply_markup=get_main_keyboard(),
-                parse_mode="Markdown"
+                "✅ Your promo code is already active!",
+                reply_markup=get_user_keyboard(user_id)
             )
         else:
             context.user_data['waiting_for_code'] = True
@@ -125,11 +131,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 f"🔑 Please enter the promo code.\n\n"
                 f"🔗 Get your promo code here: {PROMO_LINK}",
-                reply_markup=get_main_keyboard()
+                reply_markup=get_user_keyboard(user_id)
             )
         return
 
-    # Promo code enter korar stage
+    # Promo code submit korar somoy
     if context.user_data.get('waiting_for_code', False):
         if user_text.lower() == CORRECT_PROMO_CODE:
             # 24 Hours 1 Minute validity set kora
@@ -137,17 +143,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_promo_expiry[user_id] = expiry_time
             
             context.user_data['waiting_for_code'] = False
+            
+            # Code thik thakle 'USE CODE' button ta ar thakbe na
             await update.message.reply_text(
                 "🎉 Promo code activated successfully for 24 Hours & 1 Minute!\n\n"
                 "Now you can click **🔗 Create Link** to generate your tracking link.",
-                reply_markup=get_main_keyboard()
+                reply_markup=get_user_keyboard(user_id),
+                parse_mode="Markdown"
             )
         else:
             await update.message.reply_text(
                 f"❌ Invalid Promo Code!\n\n"
                 f"Please get the correct code from here: {PROMO_LINK}\n"
-                f"Or click **🎟️ USE CODE** to try again.",
-                reply_markup=get_main_keyboard()
+                f"Or try entering the code again.",
+                reply_markup=get_user_keyboard(user_id)
             )
         return
 
@@ -160,7 +169,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"🔒 You need an active promo code to create links!\n\n"
                 f"1. Go to this link to get code: {PROMO_LINK}\n"
                 f"2. Click **🎟️ USE CODE** button below and submit the code.",
-                reply_markup=get_main_keyboard()
+                reply_markup=get_user_keyboard(user_id)
             )
             return
 
@@ -168,17 +177,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_code'] = False
         await update.message.reply_text(
             "Enter a valid url",
-            reply_markup=get_main_keyboard()
+            reply_markup=get_user_keyboard(user_id)
         )
         return
 
-    # URL input process kora
+    # URL processing
     if context.user_data.get('waiting_for_url', False):
         if not is_promo_valid(user_id):
             context.user_data['waiting_for_url'] = False
             await update.message.reply_text(
                 f"❌ Promo code expired! Please get a new code from: {PROMO_LINK}",
-                reply_markup=get_main_keyboard()
+                reply_markup=get_user_keyboard(user_id)
             )
             return
 
@@ -200,11 +209,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         context.user_data['waiting_for_url'] = False
-        await update.message.reply_text(response_msg, parse_mode="Markdown", reply_markup=get_main_keyboard())
+        await update.message.reply_text(response_msg, parse_mode="Markdown", reply_markup=get_user_keyboard(user_id))
     else:
         await update.message.reply_text(
-            "Please click **🔗 Create Link** or **🎟️ USE CODE** button below.",
-            reply_markup=get_main_keyboard()
+            "Please choose an option from the menu below.",
+            reply_markup=get_user_keyboard(user_id)
         )
 
 if __name__ == '__main__':
@@ -216,5 +225,5 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
 
-    print("Bot with promo system is running...")
+    print("Dynamic Keyboard Promo Bot is running...")
     application.run_polling()
