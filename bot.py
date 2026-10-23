@@ -164,7 +164,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_url'] = True
         context.user_data['waiting_for_code'] = False
         await update.message.reply_text(
-            "Enter a valid URL:",
+            "🌐 Please Enter a valid URL:",
             reply_markup=get_user_keyboard(user_id)
         )
         return
