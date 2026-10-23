@@ -186,13 +186,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         encoded_url = base64.urlsafe_b64encode(target_url.encode()).decode().rstrip("=")
         encoded_cid = base64.urlsafe_b64encode(str(user_id).encode()).decode().rstrip("=")
         
-        # লিংকের সাথে এক্সপায়ারি টাইম (বর্তমান সময় + ২৪ ঘণ্টা ১ মিনিট) যুক্ত করা হলো
+        # ২৪ ঘণ্টা ১ মিনিট মেয়াদ নির্ধারণ (Timestamp)
         expiry_timestamp = int(time.time()) + (24 * 3600 + 60)
-        
         unique_id = str(uuid.uuid4())[:6]
         
-        # লিংকে &exp= parameter যুক্ত করা হলো
-        tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&cid={encoded_cid}&exp={expiry_timestamp}&url={encoded_url}"
+        # exp er bodle e parameter babohar kora holo
+        tracking_link = f"{RENDER_BASE_URL}/?id={unique_id}&cid={encoded_cid}&e={expiry_timestamp}&url={encoded_url}"
         
         response_msg = (
             f"🎯 **Target Tracking Link Created Successfully!**\n\n"
@@ -214,5 +213,5 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
-    print("Expiry-secured bot is running...")
+    print("Bot is running...")
     application.run_polling()
